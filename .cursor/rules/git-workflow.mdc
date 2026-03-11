@@ -1,0 +1,14 @@
+---
+description: 修改完成后自动推送到 GitHub
+alwaysApply: true
+---
+
+# Git 工作流
+
+完成代码修改后，自动执行以下步骤推送到 GitHub：
+
+1. `git add .`
+2. `git commit -m "<有意义的提交信息>"`
+3. `git push`
+
+无需询问用户是否推送，直接执行。
