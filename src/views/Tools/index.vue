@@ -4,6 +4,7 @@ import TimestampTool from './TimestampTool.vue'
 import JsonTool from './JsonTool.vue'
 import Base64Tool from './Base64Tool.vue'
 import RemoveBgTool from './RemoveBgTool.vue'
+import PdfTool from './PdfTool.vue'
 import ManifestHeader from '../../components/ManifestHeader.vue'
 
 const toolList = [
@@ -11,6 +12,7 @@ const toolList = [
   { id: 'json', name: 'JSON', icon: '📄', desc: 'JSON 格式化与压缩', component: JsonTool },
   { id: 'base64', name: 'Base64', icon: '🔐', desc: 'Base64 编解码', component: Base64Tool },
   { id: 'removebg', name: '抠图', icon: '✂', desc: 'AI 智能去除图片背景', component: RemoveBgTool },
+  { id: 'pdf', name: 'PDF', icon: '📕', desc: 'PDF 合并、拆分、图片转 PDF', component: PdfTool },
 ]
 const filter = ref('all')
 
