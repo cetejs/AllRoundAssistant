@@ -59,6 +59,16 @@ const onFileChange = (e) => {
   fileUrl.value = URL.createObjectURL(f)
 }
 
+let worker = null
+let taskId = 0
+
+const getWorker = () => {
+  if (!worker) {
+    worker = new Worker(new URL('../../workers/removeBgWorker.js', import.meta.url), { type: 'module' })
+  }
+  return worker
+}
+
 const process = async () => {
   if (!file.value) {
     error.value = '请先选择图片'
@@ -71,16 +81,36 @@ const process = async () => {
   progressTimer = setInterval(() => {
     if (genProgress.value < 90) genProgress.value = Math.min(90, genProgress.value + 3)
   }, 500)
+  const id = ++taskId
   try {
-    const { removeBackground } = await import('@imgly/background-removal')
-    const blob = await removeBackground(file.value, { proxyToWorker: true })
+    const arrayBuffer = await file.value.arrayBuffer()
+    const w = getWorker()
+    const result = await new Promise((resolve, reject) => {
+      const onMsg = (e) => {
+        if (e.data?.id !== id) return
+        w.removeEventListener('message', onMsg)
+        w.removeEventListener('error', onErr)
+        if (e.data.type === 'success') resolve(e.data.blob)
+        else reject(new Error(e.data.error || '抠图失败'))
+      }
+      const onErr = (err) => {
+        w.removeEventListener('message', onMsg)
+        w.removeEventListener('error', onErr)
+        reject(err)
+      }
+      w.addEventListener('message', onMsg)
+      w.addEventListener('error', onErr)
+      w.postMessage({ id, data: arrayBuffer }, [arrayBuffer])
+    })
+    if (id !== taskId) return
     genProgress.value = 100
+    const blob = new Blob([result], { type: 'image/png' })
     if (resultUrl.value) URL.revokeObjectURL(resultUrl.value)
     resultUrl.value = URL.createObjectURL(blob)
   } catch (e) {
-    error.value = e.message || '抠图失败，请重试'
+    if (id === taskId) error.value = e?.message || '抠图失败，请重试'
   } finally {
-    loading.value = false
+    if (id === taskId) loading.value = false
     if (progressTimer) {
       clearInterval(progressTimer)
       progressTimer = null
