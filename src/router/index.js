@@ -23,7 +23,7 @@ const routes = [
     path: '/tools',
     name: 'Tools',
     component: () => import('../views/Tools/index.vue'),
-    meta: { title: '工具' },
+    meta: { title: '全能助手' },
   },
 ]
 
