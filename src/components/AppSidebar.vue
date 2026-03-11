@@ -1,12 +1,10 @@
 <script setup>
-import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { modules } from '../config/modules'
 import { useTheme } from '../composables/useTheme'
 
 const route = useRoute()
 const { preference, setTheme } = useTheme()
-const showSettings = ref(false)
 
 const navItems = [
   { id: 'all', path: '/', name: '全部', icon: '▦' },
@@ -23,7 +21,15 @@ const isActive = (path) => {
   return route.path.startsWith(path)
 }
 
+const themeOrder = ['light', 'dark', 'auto']
+const themeIcons = { light: '☀', dark: '🌙', auto: '🔄' }
 const themeLabels = { light: '浅色', dark: '深色', auto: '跟随系统' }
+
+const cycleTheme = () => {
+  const idx = themeOrder.indexOf(preference.value)
+  const next = themeOrder[(idx + 1) % themeOrder.length]
+  setTheme(next)
+}
 </script>
 
 <template>
@@ -47,47 +53,25 @@ const themeLabels = { light: '浅色', dark: '深色', auto: '跟随系统' }
         <div class="flex-1 min-w-0">{{ item.name }}</div>
       </router-link>
     </nav>
-    <div class="p-3 border-t border-slate-200 dark:border-slate-700 relative">
+    <div class="p-3 border-t border-slate-200 dark:border-slate-700 space-y-1">
       <button
         type="button"
         class="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm"
-        @click="showSettings = !showSettings"
+        :title="themeLabels[preference]"
+        @click="cycleTheme"
       >
-        <span>⚙</span>
-        <span>设置</span>
+        <span class="text-base">{{ themeIcons[preference] }}</span>
+        <span>主题</span>
       </button>
-      <div
-        v-show="showSettings"
-        class="absolute bottom-full left-3 right-3 mb-1 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg min-w-[140px]"
+      <a
+        href="https://github.com/cetejs/AllRoundAssistant"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm"
       >
-        <div class="px-3 py-1.5 border-b border-slate-200 dark:border-slate-600">
-          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">主题</p>
-          <div class="mt-1 space-y-0.5">
-            <button
-              v-for="opt in ['light', 'dark', 'auto']"
-              :key="opt"
-              type="button"
-              class="w-full px-2 py-1 text-left text-sm rounded"
-              :class="preference === opt
-                ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'"
-              @click="setTheme(opt)"
-            >
-              {{ themeLabels[opt] }}
-            </button>
-          </div>
-        </div>
-        <a
-          href="https://github.com/cetejs/AllRoundAssistant"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
-          @click="showSettings = false"
-        >
-          <span>ℹ</span>
-          <span>关于</span>
-        </a>
-      </div>
+        <span>ℹ</span>
+        <span>关于</span>
+      </a>
     </div>
   </aside>
 </template>
