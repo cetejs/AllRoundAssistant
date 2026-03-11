@@ -30,12 +30,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <nav class="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-    <div class="container mx-auto px-4">
-      <div class="flex items-center justify-between h-14">
+  <nav class="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm">
+    <div class="container mx-auto px-4 max-w-6xl">
+      <div class="flex items-center justify-between h-12">
         <router-link
           to="/"
-          class="text-xl font-semibold text-slate-800 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+          class="text-lg font-semibold text-slate-800 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
         >
           全能助手
         </router-link>

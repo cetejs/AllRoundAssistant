@@ -58,11 +58,14 @@ onMounted(loadItems)
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-6">
-      📚 学习
-    </h1>
+    <header class="mb-6">
+      <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1">
+        📚 学习
+      </h1>
+      <p class="text-slate-600 dark:text-slate-300 text-sm">学习笔记与资源</p>
+    </header>
 
-    <div class="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 space-y-3">
+    <div class="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 space-y-3">
       <div class="flex flex-wrap gap-3">
         <input
           v-model="newTitle"

@@ -47,9 +47,12 @@ onMounted(loadEntries)
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-6">
-      📋 日报
-    </h1>
+    <header class="mb-6">
+      <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1">
+        📋 日报
+      </h1>
+      <p class="text-slate-600 dark:text-slate-300 text-sm">每日记录与回顾</p>
+    </header>
 
     <div class="mb-6 flex flex-wrap gap-4 items-end">
       <div class="flex-1 min-w-[200px]">
