@@ -4,6 +4,7 @@ import { ref, computed } from 'vue'
 const mode = ref('toDate')
 const input = ref('')
 const output = ref('')
+const useUTC = ref(false)
 
 const result = computed(() => {
   if (!input.value.trim()) return ''
@@ -11,9 +12,18 @@ const result = computed(() => {
     const ts = parseInt(input.value, 10)
     if (isNaN(ts)) return '无效时间戳'
     const d = ts < 1e12 ? new Date(ts * 1000) : new Date(ts)
-    return isNaN(d.getTime()) ? '无效时间戳' : d.toLocaleString('zh-CN')
+    if (isNaN(d.getTime())) return '无效时间戳'
+    return useUTC.value
+      ? d.toLocaleString('zh-CN', { timeZone: 'UTC' }) + ' (UTC)'
+      : d.toLocaleString('zh-CN')
   }
-  const d = new Date(input.value)
+  const str = input.value.trim()
+  let parseStr = str
+  if (useUTC.value) {
+    const s = str.replace(' ', 'T')
+    parseStr = (s.includes('T') ? s : s + 'T00:00:00') + 'Z'
+  }
+  const d = new Date(parseStr)
   return isNaN(d.getTime()) ? '' : String(Math.floor(d.getTime() / 1000))
 })
 
@@ -24,7 +34,7 @@ const update = () => {
 
 <template>
   <div class="space-y-4">
-    <div class="flex gap-4 text-slate-800 dark:text-slate-100">
+    <div class="flex flex-wrap gap-4 text-slate-800 dark:text-slate-100">
       <label class="flex items-center gap-2 cursor-pointer">
         <input v-model="mode" type="radio" value="toDate" class="accent-indigo-600" />
         <span>时间戳 → 日期</span>
@@ -32,6 +42,10 @@ const update = () => {
       <label class="flex items-center gap-2 cursor-pointer">
         <input v-model="mode" type="radio" value="toTimestamp" class="accent-indigo-600" />
         <span>日期 → 时间戳</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer ml-auto">
+        <input v-model="useUTC" type="checkbox" class="accent-indigo-600 rounded" />
+        <span>使用 UTC</span>
       </label>
     </div>
     <div>
