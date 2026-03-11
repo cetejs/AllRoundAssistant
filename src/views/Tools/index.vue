@@ -3,12 +3,14 @@ import { ref } from 'vue'
 import TimestampTool from './TimestampTool.vue'
 import JsonTool from './JsonTool.vue'
 import Base64Tool from './Base64Tool.vue'
+import RemoveBgTool from './RemoveBgTool.vue'
 import ManifestHeader from '../../components/ManifestHeader.vue'
 
 const toolList = [
   { id: 'timestamp', name: '时间戳', icon: '⏱', desc: '时间戳与日期互转', component: TimestampTool },
   { id: 'json', name: 'JSON', icon: '📄', desc: 'JSON 格式化与压缩', component: JsonTool },
   { id: 'base64', name: 'Base64', icon: '🔐', desc: 'Base64 编解码', component: Base64Tool },
+  { id: 'removebg', name: '抠图', icon: '✂', desc: 'AI 智能去除图片背景', component: RemoveBgTool },
 ]
 const filter = ref('all')
 
