@@ -34,11 +34,14 @@ const process = async () => {
   loading.value = true
   resultUrl.value = ''
   try {
-    const { default: removeBackground } = await import('@imgly/background-removal')
+    const { removeBackground } = await import('@imgly/background-removal')
     const blob = await removeBackground(file.value)
     if (resultUrl.value) URL.revokeObjectURL(resultUrl.value)
     resultUrl.value = URL.createObjectURL(blob)
   } catch (e) {
+    // #region agent log
+    fetch('http://127.0.0.1:7624/ingest/598bb8d8-0ba6-45fe-826f-9ce38f013369',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a0436'},body:JSON.stringify({sessionId:'7a0436',location:'RemoveBgTool.vue:catch',message:'process error',data:{message:e?.message,name:e?.name},hypothesisId:'H1',timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     error.value = e.message || '抠图失败，请重试'
   } finally {
     loading.value = false
