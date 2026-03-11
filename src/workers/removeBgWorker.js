@@ -10,7 +10,12 @@ self.onmessage = async (e) => {
   try {
     const { removeBackground } = await import('@imgly/background-removal')
     const blob = new Blob([data], { type: mimeType || 'image/png' })
-    const result = await removeBackground(blob, { proxyToWorker: true })
+    const config = {
+      proxyToWorker: true,
+      device: 'gpu',
+      model: 'isnet_quint8',
+    }
+    const result = await removeBackground(blob, config)
     const arrayBuffer = await result.arrayBuffer()
     self.postMessage({ id, blob: arrayBuffer, type: 'success' }, [arrayBuffer])
   } catch (err) {
