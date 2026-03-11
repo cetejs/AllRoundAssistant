@@ -23,7 +23,7 @@ const clearTool = () => {
 
 <template>
   <div>
-    <ManifestHeader title="工具" :show-search="true" />
+    <ManifestHeader title="工具" />
 
     <!-- 筛选栏 -->
     <div class="flex flex-wrap gap-2 mb-6 px-6">

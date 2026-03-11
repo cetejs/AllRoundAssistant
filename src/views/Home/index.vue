@@ -12,7 +12,7 @@ const filteredModules = computed(() => {
 
 <template>
   <div>
-    <ManifestHeader title="模块" :show-search="false" />
+    <ManifestHeader title="模块" />
 
     <!-- 筛选栏 -->
     <div class="flex flex-wrap gap-2 mb-6 px-6">
