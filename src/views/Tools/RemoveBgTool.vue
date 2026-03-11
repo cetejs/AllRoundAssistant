@@ -84,6 +84,7 @@ const process = async () => {
   const id = ++taskId
   try {
     const arrayBuffer = await file.value.arrayBuffer()
+    const mimeType = file.value.type || 'image/png'
     const w = getWorker()
     const result = await new Promise((resolve, reject) => {
       const onMsg = (e) => {
@@ -100,7 +101,7 @@ const process = async () => {
       }
       w.addEventListener('message', onMsg)
       w.addEventListener('error', onErr)
-      w.postMessage({ id, data: arrayBuffer }, [arrayBuffer])
+      w.postMessage({ id, data: arrayBuffer, mimeType }, [arrayBuffer])
     })
     if (id !== taskId) return
     genProgress.value = 100
