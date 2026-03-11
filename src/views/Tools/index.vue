@@ -15,7 +15,7 @@ const activeTab = ref('timestamp')
 <template>
   <div>
     <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-6">
-      🔧 全能助手
+      🔧 工具
     </h1>
 
     <div class="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-700">

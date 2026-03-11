@@ -18,7 +18,7 @@ export const modules = [
   },
   {
     id: 'tools',
-    name: '全能助手',
+    name: '工具',
     path: '/tools',
     icon: '🔧',
     description: '常用小工具集合',

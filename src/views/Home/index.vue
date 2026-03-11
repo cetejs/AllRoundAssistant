@@ -9,7 +9,7 @@ import { modules } from '../../config/modules'
         全能助手
       </h1>
       <p class="text-slate-600 dark:text-slate-400 text-lg">
-        日报 · 学习 · 全能助手，一站式助手
+        日报 · 学习 · 工具，一站式助手
       </p>
     </header>
 
