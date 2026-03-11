@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { modules } from '../../config/modules'
+import ManifestHeader from '../../components/ManifestHeader.vue'
 
 const filter = ref('all')
 const filteredModules = computed(() => {
@@ -11,21 +12,18 @@ const filteredModules = computed(() => {
 
 <template>
   <div>
-    <header class="mb-8">
-      <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-1">
-        全能助手
-      </h1>
-      <p class="text-slate-600 dark:text-slate-300 text-sm">
-        日报 · 学习 · 工具，一站式助手
-      </p>
-    </header>
+    <ManifestHeader
+      title="MODULE MANIFEST"
+      :subtitle="`// SECTION ID: ${filter === 'all' ? 'ALL' : filter.toUpperCase()}-01 // ITEMS: ${filteredModules.length}`"
+      :show-search="false"
+    />
 
-    <!-- 筛选栏：参考 MOGU 工具库 filter=all 风格 -->
-    <div class="flex flex-wrap gap-2 mb-6">
+    <!-- 筛选栏 -->
+    <div class="flex flex-wrap gap-2 mb-6 px-6">
       <button
-        class="px-4 py-2 rounded-full text-sm font-medium transition-colors"
+        class="font-mono-ui px-4 py-2 rounded-lg text-sm transition-colors"
         :class="filter === 'all'
-          ? 'bg-indigo-600 text-white'
+          ? 'bg-emerald-600 text-white'
           : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'"
         @click="filter = 'all'"
       >
@@ -34,9 +32,9 @@ const filteredModules = computed(() => {
       <button
         v-for="m in modules"
         :key="m.id"
-        class="px-4 py-2 rounded-full text-sm font-medium transition-colors"
+        class="font-mono-ui px-4 py-2 rounded-lg text-sm transition-colors"
         :class="filter === m.id
-          ? 'bg-indigo-600 text-white'
+          ? 'bg-emerald-600 text-white'
           : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'"
         @click="filter = m.id"
       >
@@ -44,21 +42,41 @@ const filteredModules = computed(() => {
       </button>
     </div>
 
-    <!-- 工具库风格网格：紧凑卡片 -->
-    <div class="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+    <!-- MOGU 风格卡片网格 -->
+    <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-6 pb-8">
       <router-link
         v-for="m in filteredModules"
         :key="m.id"
         :to="m.path"
-        class="group flex flex-col items-center p-5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-lg transition-all"
+        class="group block p-5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all"
       >
-        <span class="text-3xl mb-2">{{ m.icon }}</span>
-        <h2 class="font-semibold text-slate-800 dark:text-slate-100 text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-          {{ m.name }}
-        </h2>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-center">
+        <div class="flex items-start justify-between mb-3">
+          <span class="font-mono-ui text-xs text-slate-500 dark:text-slate-400">{{ m.ref }}</span>
+          <span class="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            ACTIVE
+          </span>
+        </div>
+        <div class="flex items-center gap-2 mb-6">
+          <span class="text-2xl">{{ m.icon }}</span>
+          <div>
+            <h2 class="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+              {{ m.name }}
+            </h2>
+            <p class="font-mono-ui text-xs text-slate-500 dark:text-slate-400 uppercase">
+              {{ m.type }}
+            </p>
+          </div>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-slate-300 mb-4 line-clamp-2">
           {{ m.description }}
         </p>
+        <div class="flex items-center justify-between">
+          <span class="font-mono-ui text-xs text-slate-400 dark:text-slate-500">TYPE: {{ m.type }}</span>
+          <span class="font-mono-ui text-xs text-emerald-600 dark:text-emerald-400 group-hover:underline">
+            ENTER →
+          </span>
+        </div>
       </router-link>
     </div>
   </div>

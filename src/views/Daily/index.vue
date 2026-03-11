@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import ManifestHeader from '../../components/ManifestHeader.vue'
 
 const STORAGE_KEY = 'allround-daily'
 const entries = ref([])
@@ -47,14 +48,12 @@ onMounted(loadEntries)
 
 <template>
   <div>
-    <header class="mb-6">
-      <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1">
-        📋 日报
-      </h1>
-      <p class="text-slate-600 dark:text-slate-300 text-sm">每日记录与回顾</p>
-    </header>
+    <ManifestHeader
+      title="DAILY REPORT"
+      subtitle="// SECTION ID: DLY-01 // 每日记录与回顾"
+    />
 
-    <div class="mb-6 flex flex-wrap gap-4 items-end">
+    <div class="mb-6 flex flex-wrap gap-4 items-end px-6">
       <div class="flex-1 min-w-[200px]">
         <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">新增记录</label>
         <div class="flex gap-2">
@@ -83,7 +82,7 @@ onMounted(loadEntries)
       </div>
     </div>
 
-    <ul class="space-y-3">
+    <ul class="space-y-3 px-6 pb-8">
       <li
         v-for="e in filteredEntries()"
         :key="e.id"

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import ManifestHeader from '../../components/ManifestHeader.vue'
 
 const STORAGE_KEY = 'allround-learning'
 const items = ref([])
@@ -58,14 +59,12 @@ onMounted(loadItems)
 
 <template>
   <div>
-    <header class="mb-6">
-      <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1">
-        📚 学习
-      </h1>
-      <p class="text-slate-600 dark:text-slate-300 text-sm">学习笔记与资源</p>
-    </header>
+    <ManifestHeader
+      title="LEARNING"
+      subtitle="// SECTION ID: LRN-01 // 学习笔记与资源"
+    />
 
-    <div class="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 space-y-3">
+    <div class="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 space-y-3 mx-6">
       <div class="flex flex-wrap gap-3">
         <input
           v-model="newTitle"
@@ -94,7 +93,7 @@ onMounted(loadItems)
       </div>
     </div>
 
-    <div class="mb-4 flex flex-wrap gap-2">
+    <div class="mb-4 flex flex-wrap gap-2 px-6">
       <button
         class="px-3 py-1 rounded-full text-sm transition-colors"
         :class="!filterTag
@@ -117,7 +116,7 @@ onMounted(loadItems)
       </button>
     </div>
 
-    <ul class="space-y-3">
+    <ul class="space-y-3 px-6 pb-8">
       <li
         v-for="i in filteredItems"
         :key="i.id"

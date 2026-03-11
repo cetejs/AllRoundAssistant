@@ -3,6 +3,10 @@
 /* 支持手动切换：通过 .dark 类控制深色模式 */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* MOGU 风格：等宽字体 */
+.font-mono-ui {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
 
 /* 深色模式可读性优化 */
 @layer base {
