@@ -27,25 +27,34 @@ const convert = async () => {
   }
   error.value = ''
   loading.value = true
+  let container = null
+  let overlay = null
   try {
     const arrayBuffer = await file.value.arrayBuffer()
     const { value: html } = await mammoth.convertToHtml({ arrayBuffer })
-    const container = document.createElement('div')
-    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:595px;padding:40px;font-size:12px;line-height:1.5;font-family:SimSun,serif;'
+    container = document.createElement('div')
+    container.style.cssText = 'position:fixed;left:0;top:0;width:595px;min-height:100vh;padding:40px;font-size:12px;line-height:1.5;font-family:system-ui,sans-serif;background:#fff;color:#000;overflow:auto;z-index:9998;'
     container.innerHTML = html
+    overlay = document.createElement('div')
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;color:#fff;font-size:18px;'
+    overlay.textContent = '转换中...'
     document.body.appendChild(container)
+    document.body.appendChild(overlay)
+    await new Promise((r) => setTimeout(r, 150))
     const pdf = new jsPDF({ unit: 'pt', format: 'a4' })
     await pdf.html(container, {
       x: 40,
       y: 40,
       width: 515,
       windowWidth: 600,
+      html2canvas: { scale: 2 },
     })
     pdf.save(file.value.name.replace(/\.(docx?|doc)$/i, '') + '.pdf')
-    document.body.removeChild(container)
   } catch (e) {
     error.value = e?.message || '转换失败'
   } finally {
+    if (overlay?.parentNode) overlay.remove()
+    if (container?.parentNode) container.remove()
     loading.value = false
   }
 }
