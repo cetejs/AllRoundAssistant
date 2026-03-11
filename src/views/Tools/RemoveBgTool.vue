@@ -8,10 +8,42 @@ const loading = ref(false)
 const error = ref('')
 const progressStatus = ref('') // 'downloading' | 'processing'
 const progressPercent = ref(0)
+const selectedBg = ref('transparent')
 
 const fileInput = ref(null)
 
+const bgOptions = [
+  { id: 'transparent', label: '透明', style: 'checkerboard' },
+  { id: 'white', label: '白色', color: '#ffffff' },
+  { id: 'red', label: '红色', color: '#ef4444' },
+  { id: 'gray', label: '浅灰', color: '#d1d5db' },
+  { id: 'blue', label: '蓝色', color: '#3b82f6' },
+  { id: 'gradient', label: '渐变', style: 'linear-gradient(to right, #3b82f6, #ffffff)' },
+]
+
 const hasFile = computed(() => !!file.value)
+
+const resultBgStyle = computed(() => {
+  const opt = bgOptions.find((o) => o.id === selectedBg.value)
+  if (!opt) return {}
+  if (opt.style === 'checkerboard') {
+    return {
+      backgroundColor: '#e5e5e5',
+      backgroundImage: `
+        linear-gradient(45deg, #ccc 25%, transparent 25%),
+        linear-gradient(-45deg, #ccc 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ccc 75%),
+        linear-gradient(-45deg, transparent 75%, #ccc 75%)
+      `,
+      backgroundSize: '8px 8px',
+      backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+    }
+  }
+  if (opt.style?.startsWith('linear-gradient')) {
+    return { background: opt.style }
+  }
+  return { backgroundColor: opt.color || '#fff' }
+})
 
 const onFileChange = (e) => {
   error.value = ''
@@ -59,12 +91,51 @@ const process = async () => {
   }
 }
 
-const download = () => {
+const download = async () => {
   if (!resultUrl.value) return
-  const a = document.createElement('a')
-  a.href = resultUrl.value
-  a.download = `抠图_${file.value?.name || 'image'}.png`
-  a.click()
+  const opt = bgOptions.find((o) => o.id === selectedBg.value)
+  if (!opt || opt.id === 'transparent') {
+    const a = document.createElement('a')
+    a.href = resultUrl.value
+    a.download = `抠图_${file.value?.name || 'image'}.png`
+    a.click()
+    return
+  }
+  try {
+    const img = new Image()
+    await new Promise((resolve, reject) => {
+      img.onload = resolve
+      img.onerror = reject
+      img.src = resultUrl.value
+    })
+    const canvas = document.createElement('canvas')
+    canvas.width = img.width
+    canvas.height = img.height
+    const ctx = canvas.getContext('2d')
+    if (opt.style?.startsWith('linear-gradient')) {
+      const g = ctx.createLinearGradient(0, 0, canvas.width, 0)
+      g.addColorStop(0, '#3b82f6')
+      g.addColorStop(1, '#ffffff')
+      ctx.fillStyle = g
+    } else {
+      ctx.fillStyle = opt.color || '#fff'
+    }
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(img, 0, 0)
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `抠图_${file.value?.name || 'image'}.png`
+      a.click()
+      URL.revokeObjectURL(url)
+    }, 'image/png')
+  } catch (e) {
+    const a = document.createElement('a')
+    a.href = resultUrl.value
+    a.download = `抠图_${file.value?.name || 'image'}.png`
+    a.click()
+  }
 }
 
 const reset = () => {
@@ -74,6 +145,7 @@ const reset = () => {
   fileUrl.value = ''
   resultUrl.value = ''
   error.value = ''
+  selectedBg.value = 'transparent'
   if (fileInput.value) fileInput.value.value = ''
 }
 </script>
@@ -127,14 +199,35 @@ const reset = () => {
 
     <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
 
+    <div v-if="resultUrl" class="space-y-2">
+      <p class="text-sm text-slate-600 dark:text-slate-300">选择背景:</p>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="opt in bgOptions"
+          :key="opt.id"
+          type="button"
+          class="w-10 h-10 rounded border-2 transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+          :class="selectedBg === opt.id ? 'border-slate-900 dark:border-white scale-105' : 'border-slate-300 dark:border-slate-500 hover:border-slate-500 dark:hover:border-slate-400'"
+          :style="opt.style === 'checkerboard' ? {
+            backgroundColor: '#e5e5e5',
+            backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)',
+            backgroundSize: '8px 8px',
+            backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+          } : opt.style?.startsWith('linear-gradient') ? { background: opt.style } : { backgroundColor: opt.color }"
+          :title="opt.label"
+          @click="selectedBg = opt.id"
+        />
+      </div>
+    </div>
+
     <div class="grid gap-4 sm:grid-cols-2">
       <div v-if="fileUrl" class="rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden bg-slate-100 dark:bg-slate-700">
         <p class="px-3 py-1 text-xs text-slate-500 dark:text-slate-400">原图</p>
         <img :src="fileUrl" alt="原图" class="w-full max-h-64 object-contain" />
       </div>
-      <div v-if="resultUrl" class="rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden bg-slate-100 dark:bg-slate-700">
+      <div v-if="resultUrl" class="rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden" :style="resultBgStyle">
         <p class="px-3 py-1 text-xs text-slate-500 dark:text-slate-400">抠图结果</p>
-        <img :src="resultUrl" alt="抠图结果" class="w-full max-h-64 object-contain bg-[#f0f0f0] dark:bg-slate-600" />
+        <img :src="resultUrl" alt="抠图结果" class="w-full max-h-64 object-contain" />
         <span class="block px-3 py-2">
           <button
             type="button"
