@@ -59,10 +59,7 @@ onMounted(loadItems)
 
 <template>
   <div>
-    <ManifestHeader
-      title="LEARNING"
-      subtitle="// SECTION ID: LRN-01 // 学习笔记与资源"
-    />
+    <ManifestHeader title="学习" />
 
     <div class="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 space-y-3 mx-6">
       <div class="flex flex-wrap gap-3">

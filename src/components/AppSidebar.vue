@@ -9,13 +9,12 @@ const { preference, setTheme } = useTheme()
 const showSettings = ref(false)
 
 const navItems = [
-  { id: 'all', path: '/', name: '全部', icon: '▦', num: '01' },
-  ...modules.map((m, i) => ({
+  { id: 'all', path: '/', name: '全部', icon: '▦' },
+  ...modules.map((m) => ({
     id: m.id,
     path: m.path,
     name: m.name,
     icon: m.icon,
-    num: `0${i + 2}`.slice(-2),
   })),
 ]
 
@@ -33,9 +32,6 @@ const themeLabels = { light: '浅色', dark: '深色', auto: '跟随系统' }
       <h1 class="font-mono-ui text-lg font-bold text-slate-800 dark:text-slate-100">
         全能助手
       </h1>
-      <p class="font-mono-ui text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-        ARCHIVE V1.0 // EST. 2025
-      </p>
     </div>
     <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
       <router-link
@@ -48,22 +44,7 @@ const themeLabels = { light: '浅色', dark: '深色', auto: '跟随系统' }
           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'"
       >
         <span class="text-base">{{ item.icon }}</span>
-        <div class="flex-1 min-w-0">
-          <span class="text-slate-400 dark:text-slate-500">{{ item.num }} // </span>
-          {{ item.name }}
-        </div>
-        <span
-          v-if="isActive(item.path)"
-          class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-600 dark:text-emerald-400"
-        >
-          VIEWING
-        </span>
-        <span
-          v-else
-          class="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
-        >
-          ACTIVE
-        </span>
+        <div class="flex-1 min-w-0">{{ item.name }}</div>
       </router-link>
     </nav>
     <div class="p-3 border-t border-slate-200 dark:border-slate-700 relative">

@@ -6,9 +6,9 @@ import Base64Tool from './Base64Tool.vue'
 import ManifestHeader from '../../components/ManifestHeader.vue'
 
 const toolList = [
-  { id: 'timestamp', name: '时间戳', ref: 'REF: TS-001', type: 'TOOL', icon: '⏱', desc: '时间戳与日期互转', component: TimestampTool },
-  { id: 'json', name: 'JSON', ref: 'REF: JSON-002', type: 'TOOL', icon: '📄', desc: 'JSON 格式化与压缩', component: JsonTool },
-  { id: 'base64', name: 'Base64', ref: 'REF: B64-003', type: 'TOOL', icon: '🔐', desc: 'Base64 编解码', component: Base64Tool },
+  { id: 'timestamp', name: '时间戳', icon: '⏱', desc: '时间戳与日期互转', component: TimestampTool },
+  { id: 'json', name: 'JSON', icon: '📄', desc: 'JSON 格式化与压缩', component: JsonTool },
+  { id: 'base64', name: 'Base64', icon: '🔐', desc: 'Base64 编解码', component: Base64Tool },
 ]
 const filter = ref('all')
 
@@ -23,11 +23,7 @@ const clearTool = () => {
 
 <template>
   <div>
-    <ManifestHeader
-      title="TOOL MANIFEST"
-      :subtitle="`// SECTION ID: ${filter === 'all' ? 'ALL' : filter.toUpperCase()}-01 // ITEMS: ${filter === 'all' ? toolList.length : 1}`"
-      :show-search="true"
-    />
+    <ManifestHeader title="工具" :show-search="true" />
 
     <!-- 筛选栏 -->
     <div class="flex flex-wrap gap-2 mb-6 px-6">
@@ -62,33 +58,15 @@ const clearTool = () => {
         class="group block p-5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all text-left"
         @click="showTool(t.id)"
       >
-        <div class="flex items-start justify-between mb-3">
-          <span class="font-mono-ui text-xs text-slate-500 dark:text-slate-400">{{ t.ref }}</span>
-          <span class="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            ACTIVE
-          </span>
-        </div>
-        <div class="flex items-center gap-2 mb-6">
+        <div class="flex items-center gap-2 mb-3">
           <span class="text-2xl">{{ t.icon }}</span>
-          <div>
-            <h2 class="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
-              {{ t.name }}
-            </h2>
-            <p class="font-mono-ui text-xs text-slate-500 dark:text-slate-400 uppercase">
-              {{ t.type }}
-            </p>
-          </div>
+          <h2 class="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+            {{ t.name }}
+          </h2>
         </div>
-        <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">
+        <p class="text-sm text-slate-600 dark:text-slate-300">
           {{ t.desc }}
         </p>
-        <div class="flex items-center justify-between">
-          <span class="font-mono-ui text-xs text-slate-400 dark:text-slate-500">TYPE: {{ t.type }}</span>
-          <span class="font-mono-ui text-xs text-emerald-600 dark:text-emerald-400 group-hover:underline">
-            ENTER →
-          </span>
-        </div>
       </button>
     </div>
 

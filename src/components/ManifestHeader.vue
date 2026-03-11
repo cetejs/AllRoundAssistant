@@ -1,7 +1,6 @@
 <script setup>
 defineProps({
-  title: { type: String, default: 'MANIFEST' },
-  subtitle: { type: String, default: '' },
+  title: { type: String, default: '' },
   showSearch: { type: Boolean, default: false },
 })
 </script>
@@ -12,9 +11,6 @@ defineProps({
       <h1 class="font-mono-ui text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">
         {{ title }}
       </h1>
-      <p v-if="subtitle" class="font-mono-ui text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-        {{ subtitle }}
-      </p>
     </div>
     <div v-if="showSearch" class="flex items-center gap-2">
       <button

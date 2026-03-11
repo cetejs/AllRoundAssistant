@@ -48,10 +48,7 @@ onMounted(loadEntries)
 
 <template>
   <div>
-    <ManifestHeader
-      title="DAILY REPORT"
-      subtitle="// SECTION ID: DLY-01 // 每日记录与回顾"
-    />
+    <ManifestHeader title="日报" />
 
     <div class="mb-6 flex flex-wrap gap-4 items-end px-6">
       <div class="flex-1 min-w-[200px]">
