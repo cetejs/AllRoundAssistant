@@ -1,8 +1,12 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { PDFDocument } from 'pdf-lib'
 
-const mode = ref('merge') // merge | split | img2pdf
+const props = defineProps({
+  initialMode: { type: String, default: 'merge' },
+})
+const mode = ref(props.initialMode) // merge | split | watermark | img2pdf
+watch(() => props.initialMode, (v) => { mode.value = v })
 const error = ref('')
 const loading = ref(false)
 
@@ -19,6 +23,11 @@ const splitPages = ref('') // 如 "1,3,5" 或 "1-5"
 // 图片转 PDF
 const imgFiles = ref([])
 const imgInput = ref(null)
+
+// 加水印
+const wmFile = ref(null)
+const wmInput = ref(null)
+const wmText = ref('')
 
 const onMergeChange = (e) => {
   mergeFiles.value = Array.from(e.target.files || [])
@@ -44,6 +53,16 @@ const onImgChange = (e) => {
   } else {
     error.value = ''
   }
+}
+
+const onWmChange = (e) => {
+  const f = e.target.files?.[0]
+  if (!f || f.type !== 'application/pdf') {
+    error.value = '请选择 PDF 文件'
+    return
+  }
+  wmFile.value = f
+  error.value = ''
 }
 
 const parsePageRange = (str, totalPages) => {
@@ -178,6 +197,52 @@ const resetImg = () => {
   imgFiles.value = []
   if (imgInput.value) imgInput.value.value = ''
 }
+
+const doWatermark = async () => {
+  if (!wmFile.value) {
+    error.value = '请选择 PDF 文件'
+    return
+  }
+  if (!wmText.value.trim()) {
+    error.value = '请输入水印文字'
+    return
+  }
+  error.value = ''
+  loading.value = true
+  try {
+    const bytes = await wmFile.value.arrayBuffer()
+    const pdfDoc = await PDFDocument.load(bytes)
+    const pages = pdfDoc.getPages()
+    const font = await pdfDoc.embedStandardFont('Helvetica')
+    const fontSize = 48
+    const textWidth = font.widthOfTextAtSize(wmText.value, fontSize)
+    for (const page of pages) {
+      const { width, height } = page.getSize()
+      const x = (width - textWidth) / 2
+      const y = height / 2
+      page.drawText(wmText.value, {
+        x,
+        y,
+        size: fontSize,
+        font,
+        color: { type: 'RGB', red: 0.9, green: 0.9, blue: 0.9 },
+        opacity: 0.5,
+      })
+    }
+    const pdfBytes = await pdfDoc.save()
+    downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), '加水印.pdf')
+  } catch (e) {
+    error.value = e?.message || '加水印失败'
+  } finally {
+    loading.value = false
+  }
+}
+
+const resetWm = () => {
+  wmFile.value = null
+  wmText.value = ''
+  if (wmInput.value) wmInput.value.value = ''
+}
 </script>
 
 <template>
@@ -188,6 +253,7 @@ const resetImg = () => {
         v-for="m in [
           { id: 'merge', label: 'PDF 合并', icon: '📑' },
           { id: 'split', label: 'PDF 拆分', icon: '✂' },
+          { id: 'watermark', label: 'PDF 加水印', icon: '💧' },
           { id: 'img2pdf', label: '图片转 PDF', icon: '🖼' },
         ]"
         :key="m.id"
@@ -284,6 +350,52 @@ const resetImg = () => {
           type="button"
           class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-500 text-slate-600 dark:text-slate-400 text-sm"
           @click="resetSplit"
+        >
+          清空
+        </button>
+      </div>
+    </div>
+
+    <!-- PDF 加水印 -->
+    <div v-if="mode === 'watermark'" class="space-y-4">
+      <input
+        ref="wmInput"
+        type="file"
+        accept="application/pdf"
+        class="hidden"
+        @change="onWmChange"
+      />
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm"
+        @click="wmInput?.click()"
+      >
+        选择 PDF 文件
+      </button>
+      <p v-if="wmFile" class="text-sm text-slate-600 dark:text-slate-400">{{ wmFile.name }}</p>
+      <div>
+        <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">水印文字</label>
+        <input
+          v-model="wmText"
+          type="text"
+          placeholder="输入水印内容"
+          class="w-full max-w-xs px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
+        />
+      </div>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm disabled:opacity-50"
+          :disabled="!wmFile || !wmText.trim() || loading"
+          @click="doWatermark"
+        >
+          {{ loading ? '处理中...' : '添加水印' }}
+        </button>
+        <button
+          v-if="wmFile"
+          type="button"
+          class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-500 text-slate-600 dark:text-slate-400 text-sm"
+          @click="resetWm"
         >
           清空
         </button>

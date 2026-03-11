@@ -12,8 +12,12 @@
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",
     "@tailwindcss/vite": "^4.2.1",
+    "jspdf": "^4.2.0",
+    "mammoth": "^1.11.0",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.5.207",
     "tailwindcss": "^4.2.1",
+    "tesseract.js": "^7.0.0",
     "vue": "^3.5.25",
     "vue-router": "^4.6.4"
   },
