@@ -7,6 +7,8 @@ const resultUrl = ref('')
 const loading = ref(false)
 const error = ref('')
 const selectedBg = ref('transparent')
+const genProgress = ref(0) // 模拟进度 0-100
+let progressTimer = null
 
 const fileInput = ref(null)
 
@@ -65,15 +67,25 @@ const process = async () => {
   error.value = ''
   loading.value = true
   resultUrl.value = ''
+  genProgress.value = 0
+  progressTimer = setInterval(() => {
+    if (genProgress.value < 90) genProgress.value = Math.min(90, genProgress.value + 3)
+  }, 500)
   try {
     const { removeBackground } = await import('@imgly/background-removal')
     const blob = await removeBackground(file.value, { proxyToWorker: true })
+    genProgress.value = 100
     if (resultUrl.value) URL.revokeObjectURL(resultUrl.value)
     resultUrl.value = URL.createObjectURL(blob)
   } catch (e) {
     error.value = e.message || '抠图失败，请重试'
   } finally {
     loading.value = false
+    if (progressTimer) {
+      clearInterval(progressTimer)
+      progressTimer = null
+    }
+    genProgress.value = 0
   }
 }
 
@@ -171,9 +183,17 @@ const reset = () => {
       </button>
     </div>
 
-    <p v-if="loading" class="text-sm text-slate-500 dark:text-slate-400">
-      图像生成中，可继续操作页面…
-    </p>
+    <div v-if="loading" class="space-y-2">
+      <p class="text-sm text-slate-500 dark:text-slate-400">
+        图像生成中 {{ genProgress }}%
+      </p>
+      <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+        <div
+          class="h-full bg-emerald-500 transition-all duration-300"
+          :style="{ width: `${genProgress}%` }"
+        />
+      </div>
+    </div>
 
     <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
 
