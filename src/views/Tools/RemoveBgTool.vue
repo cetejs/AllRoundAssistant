@@ -6,6 +6,8 @@ const fileUrl = ref('')
 const resultUrl = ref('')
 const loading = ref(false)
 const error = ref('')
+const progressStatus = ref('') // 'downloading' | 'processing'
+const progressPercent = ref(0)
 
 const fileInput = ref(null)
 
@@ -33,15 +35,27 @@ const process = async () => {
   error.value = ''
   loading.value = true
   resultUrl.value = ''
+  progressStatus.value = ''
+  progressPercent.value = 0
   try {
     const { removeBackground } = await import('@imgly/background-removal')
-    const blob = await removeBackground(file.value)
+    progressStatus.value = 'downloading'
+    const blob = await removeBackground(file.value, {
+      progress: (key, current, total) => {
+        progressStatus.value = 'downloading'
+        progressPercent.value = total > 0 ? Math.round((current / total) * 100) : 0
+      },
+    })
+    progressStatus.value = 'processing'
+    progressPercent.value = 100
     if (resultUrl.value) URL.revokeObjectURL(resultUrl.value)
     resultUrl.value = URL.createObjectURL(blob)
   } catch (e) {
     error.value = e.message || '抠图失败，请重试'
   } finally {
     loading.value = false
+    progressStatus.value = ''
+    progressPercent.value = 0
   }
 }
 
@@ -99,9 +113,17 @@ const reset = () => {
       </button>
     </div>
 
-    <p v-if="loading" class="text-sm text-slate-500 dark:text-slate-400">
-      首次使用需加载模型，约 10–30 秒，请耐心等待
-    </p>
+    <div v-if="loading" class="space-y-2">
+      <p class="text-sm text-slate-500 dark:text-slate-400">
+        {{ progressStatus === 'downloading' ? `加载模型中 ${progressPercent}%` : '抠图处理中...' }}
+      </p>
+      <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+        <div
+          class="h-full bg-emerald-500 transition-all duration-300"
+          :style="{ width: progressStatus === 'downloading' ? `${progressPercent}%` : '100%' }"
+        />
+      </div>
+    </div>
 
     <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
 
