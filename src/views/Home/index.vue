@@ -8,7 +8,7 @@ import { modules } from '../../config/modules'
       <h1 class="text-4xl font-bold text-slate-800 dark:text-slate-100 mb-2">
         全能助手
       </h1>
-      <p class="text-slate-600 dark:text-slate-400 text-lg">
+      <p class="text-slate-600 dark:text-slate-300 text-lg">
         日报 · 学习 · 工具，一站式助手
       </p>
     </header>

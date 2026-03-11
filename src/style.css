@@ -2,3 +2,12 @@
 
 /* 支持手动切换：通过 .dark 类控制深色模式 */
 @custom-variant dark (&:where(.dark, .dark *));
+
+
+/* 深色模式可读性优化 */
+@layer base {
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: rgb(148 163 184); /* slate-400 */
+  }
+}

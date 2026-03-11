@@ -53,13 +53,13 @@ onMounted(loadEntries)
 
     <div class="mb-6 flex flex-wrap gap-4 items-end">
       <div class="flex-1 min-w-[200px]">
-        <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">新增记录</label>
+        <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">新增记录</label>
         <div class="flex gap-2">
           <input
             v-model="newContent"
             type="text"
             placeholder="今日完成..."
-            class="flex-1 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            class="flex-1 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             @keyup.enter="addEntry"
           />
           <button
@@ -71,11 +71,11 @@ onMounted(loadEntries)
         </div>
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">按日期筛选</label>
+        <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">按日期筛选</label>
         <input
           v-model="filterDate"
           type="date"
-          class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+          class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100"
         />
       </div>
     </div>
@@ -87,7 +87,7 @@ onMounted(loadEntries)
         class="flex items-center justify-between gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
       >
         <div>
-          <span class="text-sm text-slate-500 dark:text-slate-400">{{ e.date }}</span>
+          <span class="text-sm text-slate-500 dark:text-slate-300">{{ e.date }}</span>
           <p class="text-slate-800 dark:text-slate-100">{{ e.content }}</p>
         </div>
         <button
@@ -97,7 +97,7 @@ onMounted(loadEntries)
           删除
         </button>
       </li>
-      <li v-if="filteredEntries().length === 0" class="text-center py-12 text-slate-500 dark:text-slate-400">
+      <li v-if="filteredEntries().length === 0" class="text-center py-12 text-slate-500 dark:text-slate-300">
         暂无记录，添加第一条日报吧
       </li>
     </ul>

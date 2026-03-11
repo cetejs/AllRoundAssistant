@@ -68,19 +68,19 @@ onMounted(loadItems)
           v-model="newTitle"
           type="text"
           placeholder="标题"
-          class="flex-1 min-w-[120px] px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+          class="flex-1 min-w-[120px] px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400"
         />
         <input
           v-model="newLink"
           type="url"
           placeholder="链接（可选）"
-          class="flex-1 min-w-[120px] px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+          class="flex-1 min-w-[120px] px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400"
         />
         <input
           v-model="newTag"
           type="text"
           placeholder="标签"
-          class="w-24 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+          class="w-24 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400"
         />
         <button
           class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
@@ -96,7 +96,7 @@ onMounted(loadItems)
         class="px-3 py-1 rounded-full text-sm transition-colors"
         :class="!filterTag
           ? 'bg-indigo-600 text-white'
-          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'"
+          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 dark:hover:text-slate-100'"
         @click="filterTag = ''"
       >
         全部
@@ -107,7 +107,7 @@ onMounted(loadItems)
         class="px-3 py-1 rounded-full text-sm transition-colors"
         :class="filterTag === tag
           ? 'bg-indigo-600 text-white'
-          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'"
+          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 dark:hover:text-slate-100'"
         @click="filterTag = tag"
       >
         {{ tag }}
@@ -121,7 +121,7 @@ onMounted(loadItems)
         class="flex items-center justify-between gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
       >
         <div>
-          <span class="text-xs text-slate-500 dark:text-slate-400">{{ i.tag }}</span>
+          <span class="text-xs text-slate-500 dark:text-slate-300">{{ i.tag }}</span>
           <a
             v-if="i.link"
             :href="i.link"
@@ -140,7 +140,7 @@ onMounted(loadItems)
           删除
         </button>
       </li>
-      <li v-if="filteredItems.length === 0" class="text-center py-12 text-slate-500 dark:text-slate-400">
+      <li v-if="filteredItems.length === 0" class="text-center py-12 text-slate-500 dark:text-slate-300">
         暂无学习笔记，添加第一条吧
       </li>
     </ul>

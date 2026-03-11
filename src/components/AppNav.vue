@@ -47,7 +47,7 @@ onMounted(() => {
             class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             :class="isActive(m.path)
               ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'"
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'"
           >
             <span class="mr-1.5">{{ m.icon }}</span>
             {{ m.name }}

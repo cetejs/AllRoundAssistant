@@ -24,13 +24,13 @@ const update = () => {
 
 <template>
   <div class="space-y-4">
-    <div class="flex gap-4">
-      <label class="flex items-center gap-2">
-        <input v-model="mode" type="radio" value="toDate" />
+    <div class="flex gap-4 text-slate-800 dark:text-slate-100">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input v-model="mode" type="radio" value="toDate" class="accent-indigo-600" />
         <span>时间戳 → 日期</span>
       </label>
-      <label class="flex items-center gap-2">
-        <input v-model="mode" type="radio" value="toTimestamp" />
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input v-model="mode" type="radio" value="toTimestamp" class="accent-indigo-600" />
         <span>日期 → 时间戳</span>
       </label>
     </div>
@@ -39,7 +39,7 @@ const update = () => {
         v-model="input"
         type="text"
         :placeholder="mode === 'toDate' ? '输入时间戳（秒或毫秒）' : '输入日期，如 2025-03-11 12:00:00'"
-        class="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+        class="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400"
         @input="update"
       />
     </div>
@@ -51,7 +51,7 @@ const update = () => {
         转换
       </button>
     </div>
-    <div v-if="output" class="p-3 rounded bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 font-mono">
+    <div v-if="output" class="p-3 rounded bg-slate-100 dark:bg-slate-600 text-slate-800 dark:text-slate-100 font-mono">
       {{ output }}
     </div>
   </div>
