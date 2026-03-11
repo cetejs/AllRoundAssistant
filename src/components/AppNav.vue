@@ -18,7 +18,7 @@ const isActive = (path) => {
           to="/"
           class="text-xl font-semibold text-slate-800 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
         >
-          AllRound Assistant
+          全能助手
         </router-link>
         <div class="flex gap-1">
           <router-link

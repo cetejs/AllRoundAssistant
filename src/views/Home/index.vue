@@ -6,7 +6,7 @@ import { modules } from '../../config/modules'
   <div>
     <header class="text-center mb-12">
       <h1 class="text-4xl font-bold text-slate-800 dark:text-slate-100 mb-2">
-        AllRound Assistant
+        全能助手
       </h1>
       <p class="text-slate-600 dark:text-slate-400 text-lg">
         日报 · 学习 · 全能助手，一站式助手

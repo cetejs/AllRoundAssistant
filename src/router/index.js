@@ -5,7 +5,7 @@ const routes = [
     path: '/',
     name: 'Home',
     component: () => import('../views/Home/index.vue'),
-    meta: { title: 'AllRound Assistant' },
+    meta: { title: '' },
   },
   {
     path: '/daily',
@@ -33,7 +33,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  document.title = to.meta.title ? `${to.meta.title} - AllRound Assistant` : 'AllRound Assistant'
+  document.title = to.meta.title ? `${to.meta.title} - 全能助手` : '全能助手'
   next()
 })
 

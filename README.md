@@ -1,4 +1,4 @@
-# AllRound Assistant
+# 全能助手
 
 日报 · 学习 · 全能助手，一站式助手
 
