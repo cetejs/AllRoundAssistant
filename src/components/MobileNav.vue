@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { modules } from '../config/modules'
 import { useTheme } from '../composables/useTheme'
@@ -7,6 +7,7 @@ import { useTheme } from '../composables/useTheme'
 const route = useRoute()
 const { preference, setTheme } = useTheme()
 const showMenu = ref(false)
+const showSettings = ref(false)
 
 const navItems = [
   { path: '/', name: '全部' },
@@ -21,6 +22,13 @@ const isActive = (path) => {
 const themeOrder = ['light', 'dark', 'auto']
 const themeIcons = { light: '☀', dark: '🌙', auto: '🔄' }
 const cycleTheme = () => setTheme(themeOrder[(themeOrder.indexOf(preference.value) + 1) % themeOrder.length])
+
+const closeSettings = (e) => {
+  if (!e.target.closest('.mobile-settings')) showSettings.value = false
+}
+
+onMounted(() => document.addEventListener('click', closeSettings))
+onUnmounted(() => document.removeEventListener('click', closeSettings))
 </script>
 
 <template>
@@ -29,14 +37,36 @@ const cycleTheme = () => setTheme(themeOrder[(themeOrder.indexOf(preference.valu
       全能助手
     </router-link>
     <div class="flex items-center gap-1">
-      <button
-        type="button"
-        class="p-2 rounded-lg text-slate-600 dark:text-slate-400"
-        :title="preference === 'light' ? '浅色' : preference === 'dark' ? '深色' : '跟随系统'"
-        @click="cycleTheme"
-      >
-        {{ themeIcons[preference] }}
-      </button>
+      <div class="relative mobile-settings">
+        <button
+          type="button"
+          class="p-2 rounded-lg text-slate-600 dark:text-slate-400"
+          @click="showSettings = !showSettings"
+        >
+          ⚙
+        </button>
+        <div
+          v-show="showSettings"
+          class="absolute right-0 top-full mt-1 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg min-w-[120px]"
+        >
+          <button
+            type="button"
+            class="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+            @click="cycleTheme"
+          >
+            {{ themeIcons[preference] }} 主题
+          </button>
+          <a
+            href="https://github.com/cetejs/AllRoundAssistant"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+            @click="showSettings = false"
+          >
+            ℹ 关于
+          </a>
+        </div>
+      </div>
       <button
         type="button"
         class="p-2 rounded-lg text-slate-600 dark:text-slate-400"

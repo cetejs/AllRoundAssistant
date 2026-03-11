@@ -1,10 +1,19 @@
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { modules } from '../config/modules'
 import { useTheme } from '../composables/useTheme'
 
 const route = useRoute()
 const { preference, setTheme } = useTheme()
+const showSettings = ref(false)
+
+const closeOnClickOutside = (e) => {
+  if (!e.target.closest('.settings-area')) showSettings.value = false
+}
+
+onMounted(() => document.addEventListener('click', closeOnClickOutside))
+onUnmounted(() => document.removeEventListener('click', closeOnClickOutside))
 
 const navItems = [
   { id: 'all', path: '/', name: '全部', icon: '▦' },
@@ -53,25 +62,39 @@ const cycleTheme = () => {
         <div class="flex-1 min-w-0">{{ item.name }}</div>
       </router-link>
     </nav>
-    <div class="p-3 border-t border-slate-200 dark:border-slate-700 space-y-1">
+    <div class="p-3 border-t border-slate-200 dark:border-slate-700 relative settings-area">
       <button
         type="button"
         class="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm"
-        :title="themeLabels[preference]"
-        @click="cycleTheme"
+        @click="showSettings = !showSettings"
       >
-        <span class="text-base">{{ themeIcons[preference] }}</span>
-        <span>主题</span>
+        <span>⚙</span>
+        <span>设置</span>
       </button>
-      <a
-        href="https://github.com/cetejs/AllRoundAssistant"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm"
+      <div
+        v-show="showSettings"
+        class="absolute bottom-full left-3 right-3 mb-1 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg min-w-[140px]"
       >
-        <span>ℹ</span>
-        <span>关于</span>
-      </a>
+        <button
+          type="button"
+          class="flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+          :title="themeLabels[preference]"
+          @click="cycleTheme"
+        >
+          <span>{{ themeIcons[preference] }}</span>
+          <span>主题</span>
+        </button>
+        <a
+          href="https://github.com/cetejs/AllRoundAssistant"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+          @click="showSettings = false"
+        >
+          <span>ℹ</span>
+          <span>关于</span>
+        </a>
+      </div>
     </div>
   </aside>
 </template>
