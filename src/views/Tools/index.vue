@@ -9,6 +9,7 @@ import PdfTool from './PdfTool.vue'
 import Pdf2ImgTool from './Pdf2ImgTool.vue'
 import Word2PdfTool from './Word2PdfTool.vue'
 import PlaceholderTool from './PlaceholderTool.vue'
+import AudioConvertTool from './AudioConvertTool.vue'
 import ManifestHeader from '../../components/ManifestHeader.vue'
 
 const toolCategories = [
@@ -40,6 +41,14 @@ const toolCategories = [
       { id: 'pdf2excel', name: 'PDF转Excel', icon: '📗', component: PlaceholderTool, props: { name: 'PDF转Excel', desc: '该功能需要服务端支持，敬请期待' } },
       { id: 'pdf2ppt', name: 'PDF转PPT', icon: '📙', component: PlaceholderTool, props: { name: 'PDF转PPT', desc: '该功能需要服务端支持，敬请期待' } },
       { id: 'pdf2img', name: 'PDF转图片', icon: '🖼', component: Pdf2ImgTool },
+    ],
+  },
+  {
+    id: 'audio',
+    name: '音频工具',
+    icon: '🎵',
+    tools: [
+      { id: 'audio-convert', name: '音频格式转换', icon: '🔄', desc: 'MP3、WAV 等格式互转', component: AudioConvertTool },
     ],
   },
   {
