@@ -3,11 +3,11 @@
  */
 export const modules = [
   {
-    id: 'daily',
-    name: '日报',
-    path: '/daily',
+    id: 'documents',
+    name: '文档',
+    path: '/documents',
     icon: '📋',
-    description: '每日记录与回顾',
+    description: '文档与笔记管理',
   },
   {
     id: 'learning',

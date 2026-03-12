@@ -8,10 +8,10 @@ const routes = [
     meta: { title: '' },
   },
   {
-    path: '/daily',
-    name: 'Daily',
-    component: () => import('../views/Daily/index.vue'),
-    meta: { title: '日报' },
+    path: '/documents',
+    name: 'Documents',
+    component: () => import('../views/Documents/index.vue'),
+    meta: { title: '文档' },
   },
   {
     path: '/learning',
