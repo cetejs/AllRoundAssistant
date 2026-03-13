@@ -11,7 +11,6 @@ import {
   adminSignIn,
   adminSignOut,
   checkIsAdmin,
-  getAdminEmail,
 } from '../../lib/cloud.js'
 
 const STORAGE_KEY = 'allround-documents'
@@ -283,12 +282,7 @@ async function submitAdminLogin() {
     isAdmin.value = true
     await loadFromCloud()
   } catch (e) {
-    const msg = e?.message || ''
-    if (msg.includes('Invalid login credentials') || msg.includes('invalid') && msg.includes('credential')) {
-      adminError.value = 'Supabase 认证失败，请检查：① 在 Supabase → Authentication → Users 中已创建该邮箱用户且密码一致；② 若开启了「Confirm email」，需在用户列表中为该用户确认邮箱。'
-    } else {
-      adminError.value = msg || '登录失败'
-    }
+    adminError.value = e?.message || '登录失败'
   } finally {
     adminLoading.value = false
   }
@@ -330,17 +324,12 @@ async function loadFromCloud() {
   }
 }
 
-onMounted(async () => {
+onMounted(() => {
   loadDocs()
   loadFolders()
-  isAdmin.value = await checkIsAdmin()
+  isAdmin.value = checkIsAdmin()
   loadFromCloud()
   document.addEventListener('click', closeMenu)
-  if (supabase) {
-    supabase.auth.onAuthStateChange(async () => {
-      isAdmin.value = await checkIsAdmin()
-    })
-  }
 })
 
 onUnmounted(() => {
@@ -370,12 +359,12 @@ onUnmounted(() => {
       <div v-if="showAdminModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="showAdminModal = false">
         <div class="w-full max-w-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 p-5 shadow-xl">
           <h3 class="text-lg font-medium text-slate-800 dark:text-slate-100 mb-4">管理员登录</h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">使用邮箱：{{ getAdminEmail() }}（需在 Supabase 中已创建且密码一致）</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">输入与配置中 VITE_SUPABASE_ADMIN_PASSWORD 一致的密码即可（默认 root）</p>
           <form @submit.prevent="submitAdminLogin" class="space-y-3">
             <input
               v-model="adminPassword"
               type="password"
-              placeholder="密码（与 Supabase 中该用户密码一致）"
+              placeholder="管理员密码"
               class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm"
               autocomplete="current-password"
             />

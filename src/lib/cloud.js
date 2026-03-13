@@ -1,36 +1,36 @@
 import { supabase, isCloudEnabled } from './supabase.js'
 
-const getAdminEmail = () => import.meta.env.VITE_SUPABASE_ADMIN_EMAIL || 'admin@allround.local'
+const ADMIN_SESSION_KEY = 'allround-admin'
+
+const getAdminEmail = () => import.meta.env.VITE_SUPABASE_ADMIN_EMAIL || ''
 const getAdminUid = () => import.meta.env.VITE_SUPABASE_ADMIN_UID || null
-/** 管理员密码：默认 root，可通过 VITE_SUPABASE_ADMIN_PASSWORD 覆盖（需与 Supabase 中该用户密码一致） */
+/** 管理员密码：与 VITE_SUPABASE_ADMIN_PASSWORD 一致即登录成功（默认 root） */
 const getAdminPassword = () => import.meta.env.VITE_SUPABASE_ADMIN_PASSWORD || 'root'
 
-/** 管理员登录（默认密码 root），仅当 password 正确时用管理员账号登录 Supabase */
+/** 管理员登录：仅校验密码与 VITE_SUPABASE_ADMIN_PASSWORD 一致即可，无需邮箱/用户名 */
 export async function adminSignIn(password) {
-  if (!supabase) throw new Error('云端未配置')
   const expected = getAdminPassword()
   if (!password || password !== expected) throw new Error('密码错误')
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: getAdminEmail(),
-    password: password,
-  })
-  if (error) throw error
-  return data
+  if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(ADMIN_SESSION_KEY, '1')
+  if (supabase && getAdminEmail()) {
+    try {
+      await supabase.auth.signInWithPassword({ email: getAdminEmail(), password })
+    } catch {
+      // 仅密码登录已成功；Supabase 登录失败则不同步云端，仅本地编辑
+    }
+  }
 }
 
 /** 管理员登出 */
 export async function adminSignOut() {
-  if (!supabase) return
-  await supabase.auth.signOut()
+  if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(ADMIN_SESSION_KEY)
+  if (supabase) await supabase.auth.signOut()
 }
 
-/** 当前是否为管理员（已用管理员账号登录） */
-export async function checkIsAdmin() {
-  if (!supabase) return false
-  const uid = getAdminUid()
-  if (!uid) return false
-  const { data: { user } } = await supabase.auth.getUser()
-  return !!(user && user.id === uid)
+/** 当前是否为管理员（仅看是否通过密码登录过，存在 sessionStorage） */
+export function checkIsAdmin() {
+  if (typeof sessionStorage === 'undefined') return false
+  return sessionStorage.getItem(ADMIN_SESSION_KEY) === '1'
 }
 
 /** 从云端拉取文件夹列表（管理员拉自己的，查看者拉管理员的） */
@@ -119,4 +119,4 @@ export async function syncDocsToCloud(docs) {
   }
 }
 
-export { isCloudEnabled, getAdminEmail }
+export { isCloudEnabled }

@@ -46,10 +46,10 @@ npm run build
 4. 在 **SQL Editor** 中执行（将 `你的管理员UUID` 替换为上一步的 UUID）：
    - `CREATE POLICY "document_folders_select_anon" ON document_folders FOR SELECT TO anon USING (user_id = '你的管理员UUID');`
    - `CREATE POLICY "documents_select_anon" ON documents FOR SELECT TO anon USING (user_id = '你的管理员UUID');`
-5. 在项目根目录创建 `.env`，参考 `.env.example` 填写 `VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY`、`VITE_SUPABASE_ADMIN_EMAIL`、`VITE_SUPABASE_ADMIN_UID`；若管理员密码不是 root，需设置 `VITE_SUPABASE_ADMIN_PASSWORD` 与 Supabase 中一致。
+5. 在项目根目录创建 `.env`，参考 `.env.example` 填写 `VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY`、`VITE_SUPABASE_ADMIN_PASSWORD`（管理员登录密码，默认 root）。若需云端同步，再配置 `VITE_SUPABASE_ADMIN_EMAIL` 与 `VITE_SUPABASE_ADMIN_UID` 并在 Supabase 创建对应用户。
 6. 重新运行 `npm run dev` 或重新构建。
 
-**权限**：未登录或未以管理员登录时为**只读**（可看文档列表与内容）。点击「管理员登录」并输入管理员密码（默认 **root**，可通过 `VITE_SUPABASE_ADMIN_PASSWORD` 配置）后获得编辑权限（新建/删除/移动文档与文件夹，编辑内容并同步云端）。密码需与 Supabase 中该管理员用户的密码完全一致。
+**权限**：未登录或未以管理员登录时为**只读**（可看文档列表与内容）。点击「管理员登录」并输入与 `VITE_SUPABASE_ADMIN_PASSWORD` 一致的密码（默认 **root**）即登录成功，无需邮箱或用户名。登录后可编辑并（若配置了 Supabase 管理员邮箱）同步云端。
 
 ## 技术栈
 
