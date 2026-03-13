@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import ManifestHeader from '../../components/ManifestHeader.vue'
 
 const STORAGE_KEY = 'allround-documents'
@@ -13,6 +13,10 @@ const listFilter = ref('')
 const selectedFolderId = ref(null) // null = 全部，'uncategorized' = 未分类
 const newFolderName = ref('')
 const showNewFolder = ref(false)
+const menuDocId = ref(null) // 当前显示操作菜单的文档 id
+const moveTargetFolderId = ref(null) // 移动时选中的目标文件夹
+const dateEditDocId = ref(null) // 当前编辑日期的文档 id
+const dateEditValue = ref('') // 日期输入 YYYY-MM-DD
 
 const loadDocs = () => {
   try {
@@ -159,6 +163,61 @@ const removeDoc = (id, e) => {
     editingTitle.value = ''
     editingContent.value = ''
   }
+  menuDocId.value = null
+}
+
+const copyDoc = (d, e) => {
+  e?.stopPropagation()
+  const now = new Date().toISOString()
+  const copy = {
+    id: Date.now(),
+    title: (d.title || '无标题文档') + ' (副本)',
+    content: d.content || '',
+    folderId: d.folderId ?? null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  docs.value.unshift(copy)
+  saveDocs()
+  menuDocId.value = null
+}
+
+const moveDoc = (docId, targetFolderId, e) => {
+  e?.stopPropagation()
+  const doc = docs.value.find((d) => d.id === docId)
+  if (!doc) return
+  doc.folderId = targetFolderId === 'uncategorized' || targetFolderId === null ? null : targetFolderId
+  doc.updatedAt = new Date().toISOString()
+  saveDocs()
+  menuDocId.value = null
+  moveTargetFolderId.value = null
+}
+
+const openDateEdit = (d, e) => {
+  e?.stopPropagation()
+  menuDocId.value = null
+  dateEditDocId.value = d.id
+  dateEditValue.value = (d.updatedAt || d.createdAt).slice(0, 10)
+}
+
+const confirmDateEdit = () => {
+  if (!dateEditDocId.value || !dateEditValue.value) return
+  const doc = docs.value.find((d) => d.id === dateEditDocId.value)
+  if (!doc) return
+  doc.updatedAt = dateEditValue.value + 'T12:00:00.000Z'
+  saveDocs()
+  dateEditDocId.value = null
+  dateEditValue.value = ''
+}
+
+const cancelDateEdit = () => {
+  dateEditDocId.value = null
+  dateEditValue.value = ''
+}
+
+const toggleDocMenu = (id, e) => {
+  e?.stopPropagation()
+  menuDocId.value = menuDocId.value === id ? null : id
 }
 
 watch([editingTitle, editingContent], () => {
@@ -171,9 +230,16 @@ watch([editingTitle, editingContent], () => {
   saveDocs()
 }, { flush: 'post' })
 
+const closeMenu = () => { menuDocId.value = null }
+
 onMounted(() => {
   loadDocs()
   loadFolders()
+  document.addEventListener('click', closeMenu)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeMenu)
 })
 </script>
 
@@ -271,28 +337,70 @@ onMounted(() => {
 
           <div class="border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 overflow-hidden flex-1 min-h-0">
           <div class="divide-y divide-slate-200 dark:divide-slate-600">
-            <button
-              v-for="d in filteredDocs"
-              :key="d.id"
-              type="button"
-              class="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group"
-              @click="openDoc(d.id)"
-            >
-              <span class="text-2xl text-slate-400 dark:text-slate-500 shrink-0">📄</span>
-              <div class="flex-1 min-w-0">
-                <p class="font-medium text-slate-800 dark:text-slate-100 truncate">{{ d.title }}</p>
-                <p v-if="d.content" class="mt-0.5 text-sm text-slate-500 dark:text-slate-400 truncate">{{ d.content.replace(/\s+/g, ' ').trim() }}</p>
-              </div>
-              <span class="text-xs text-slate-400 dark:text-slate-500 shrink-0">{{ formatTime(d.updatedAt || d.createdAt) }}</span>
-              <button
-                type="button"
-                class="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                title="删除"
-                @click="removeDoc(d.id, $event)"
+            <template v-for="d in filteredDocs" :key="d.id">
+              <!-- 修改日期行（内联编辑） -->
+              <div
+                v-if="dateEditDocId === d.id"
+                class="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-700/50"
+                @click.stop
               >
-                ✕
-              </button>
-            </button>
+                <span class="text-slate-500 dark:text-slate-400 text-sm">修改更新日期</span>
+                <input
+                  v-model="dateEditValue"
+                  type="date"
+                  class="px-2 py-1.5 rounded border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm"
+                  @keydown.enter="confirmDateEdit"
+                />
+                <button type="button" class="px-2 py-1 text-sm text-emerald-600 dark:text-emerald-400 hover:underline" @click="confirmDateEdit">确定</button>
+                <button type="button" class="px-2 py-1 text-sm text-slate-500 hover:underline" @click="cancelDateEdit">取消</button>
+              </div>
+              <!-- 文档行 -->
+              <div
+                class="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group relative"
+                :class="{ 'bg-slate-50 dark:bg-slate-700/50': menuDocId === d.id }"
+              >
+                <button
+                  type="button"
+                  class="absolute inset-0 z-0"
+                  @click="openDoc(d.id)"
+                />
+                <span class="text-2xl text-slate-400 dark:text-slate-500 shrink-0 relative z-10">📄</span>
+                <div class="flex-1 min-w-0 relative z-10">
+                  <p class="font-medium text-slate-800 dark:text-slate-100 truncate">{{ d.title }}</p>
+                  <p v-if="d.content" class="mt-0.5 text-sm text-slate-500 dark:text-slate-400 truncate">{{ d.content.replace(/\s+/g, ' ').trim() }}</p>
+                </div>
+                <span class="text-xs text-slate-400 dark:text-slate-500 shrink-0 relative z-10">{{ formatTime(d.updatedAt || d.createdAt) }}</span>
+                <div class="flex items-center gap-0.5 shrink-0 relative z-10">
+                  <button
+                    v-if="dateEditDocId !== d.id"
+                    type="button"
+                    class="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="更多"
+                    @click="toggleDocMenu(d.id, $event)"
+                  >
+                    ⋯
+                  </button>
+                  <div
+                    v-if="menuDocId === d.id"
+                    class="absolute right-0 top-full mt-1 py-1 min-w-[120px] rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg z-20"
+                  >
+                    <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700" @click="copyDoc(d, $event)">复制</button>
+                    <div class="relative">
+                      <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between" @click.stop>
+                        移动到
+                        <span>▸</span>
+                      </button>
+                      <div class="absolute left-full top-0 ml-0.5 py-1 min-w-[100px] rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
+                        <button type="button" class="w-full px-3 py-1.5 text-left text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700" @click="moveDoc(d.id, null, $event)">未分类</button>
+                        <button v-for="f in folders" :key="f.id" type="button" class="w-full px-3 py-1.5 text-left text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700" @click="moveDoc(d.id, f.id, $event)">{{ f.name }}</button>
+                      </div>
+                    </div>
+                    <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700" @click="openDateEdit(d, $event)">修改更新日期</button>
+                    <button type="button" class="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20" @click="removeDoc(d.id, $event)">删除</button>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
           <div v-if="filteredDocs.length === 0" class="py-16 text-center text-slate-500 dark:text-slate-400">
             <p class="mb-1">{{ listFilter ? '未找到匹配的文档' : '暂无文档' }}</p>
