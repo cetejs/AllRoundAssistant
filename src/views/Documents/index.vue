@@ -35,6 +35,7 @@ const adminPassword = ref('')
 const adminError = ref('')
 const adminLoading = ref(false)
 const moveSubmenuOnLeft = ref(false)
+const showMoveSubmenu = ref(false) // 点击「移动到」后才显示子菜单
 const menuTriggerRect = ref({ top: 0, left: 0, right: 0, bottom: 0 })
 
 const loadDocs = () => {
@@ -252,6 +253,7 @@ const toggleDocMenu = (id, e) => {
     return
   }
   menuDocId.value = id
+  showMoveSubmenu.value = false
   if (e?.currentTarget) {
     const rect = e.currentTarget.getBoundingClientRect()
     menuTriggerRect.value = { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom }
@@ -269,7 +271,10 @@ watch([editingTitle, editingContent], () => {
   saveDocs()
 }, { flush: 'post' })
 
-const closeMenu = () => { menuDocId.value = null }
+const closeMenu = () => {
+  menuDocId.value = null
+  showMoveSubmenu.value = false
+}
 
 
 function openAdminModal() {
@@ -365,11 +370,12 @@ onUnmounted(() => {
         >
           <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700" @click="copyDoc(menuDoc, $event)">复制</button>
           <div class="relative">
-            <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between" @click.stop>
+            <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between" @click.stop="showMoveSubmenu = !showMoveSubmenu">
               移动到
               <span>▸</span>
             </button>
             <div
+              v-show="showMoveSubmenu"
               class="absolute top-0 py-1 min-w-[100px] rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg z-10"
               :class="moveSubmenuOnLeft ? 'right-full left-auto mr-0.5' : 'left-full ml-0.5'"
             >
