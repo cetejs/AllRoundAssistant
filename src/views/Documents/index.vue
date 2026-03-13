@@ -342,7 +342,7 @@ onUnmounted(() => {
     <!-- 列表页 -->
     <template v-if="currentId === null">
       <ManifestHeader title="文档" />
-      <div v-if="isCloudEnabled()" class="px-6 pt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+      <div v-if="isCloudEnabled()" class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 pt-1 pr-[max(1.5rem,env(safe-area-inset-right))] pl-[max(1.5rem,env(safe-area-inset-left))]">
         <span v-if="cloudSyncStatus === 'syncing'">☁️ 同步中…</span>
         <span v-else-if="cloudSyncStatus === 'ok'">☁️ 已同步到云端</span>
         <span v-else-if="cloudSyncStatus === 'error'" class="text-amber-600 dark:text-amber-400">☁️ 同步失败，数据已存本地</span>
@@ -377,7 +377,7 @@ onUnmounted(() => {
           </form>
         </div>
       </div>
-      <div class="flex flex-1 min-h-0 px-6 pb-8 gap-6">
+      <div class="flex flex-1 min-h-0 gap-6 pr-[max(1.5rem,env(safe-area-inset-right))] pl-[max(1.5rem,env(safe-area-inset-left))] pb-[max(2rem,env(safe-area-inset-bottom))]">
         <!-- 文件夹侧栏 -->
         <aside class="w-52 shrink-0 flex flex-col gap-1">
           <button
@@ -530,7 +530,7 @@ onUnmounted(() => {
 
     <!-- 文档编辑页（飞书式：标题 + 正文） -->
     <template v-else>
-      <header class="sticky top-0 z-10 flex items-center gap-4 px-6 py-3 border-b border-slate-200 dark:border-slate-600 bg-white/95 dark:bg-slate-900/95 backdrop-blur">
+      <header class="sticky top-0 z-10 flex items-center gap-4 border-b border-slate-200 dark:border-slate-600 bg-white/95 dark:bg-slate-900/95 backdrop-blur pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-3 pl-[max(1.5rem,env(safe-area-inset-left))]">
         <button
           type="button"
           class="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
@@ -544,7 +544,7 @@ onUnmounted(() => {
         </span>
       </header>
 
-      <main class="flex-1 max-w-3xl mx-auto w-full px-6 py-8">
+      <main class="flex-1 max-w-3xl mx-auto w-full min-h-0 overflow-auto pt-8 pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(2rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]">
         <input
           v-model="editingTitle"
           type="text"
