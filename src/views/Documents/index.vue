@@ -1,20 +1,19 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import ManifestHeader from '../../components/ManifestHeader.vue'
 
 const STORAGE_KEY = 'allround-documents'
 const docs = ref([])
-const newTitle = ref('')
-const newContent = ref('')
-const filterMode = ref('all') // all | week | custom
-const filterDate = ref('')
-
-const todayStr = () => new Date().toISOString().slice(0, 10)
+const currentId = ref(null) // 当前打开的文档 id，null 表示列表页
+const editingTitle = ref('')
+const editingContent = ref('')
+const listFilter = ref('') // 搜索/筛选
 
 const loadDocs = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    docs.value = raw ? JSON.parse(raw) : []
+    const list = raw ? JSON.parse(raw) : []
+    docs.value = list.map((d) => ({ ...d, updatedAt: d.updatedAt || d.createdAt }))
   } catch {
     docs.value = []
   }
@@ -24,67 +23,86 @@ const saveDocs = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(docs.value))
 }
 
-const addDoc = () => {
-  const title = newTitle.value.trim()
-  const content = newContent.value.trim()
-  if (!title && !content) return
-  docs.value.unshift({
-    id: Date.now(),
-    title: title || '无标题',
-    content,
-    createdAt: new Date().toISOString(),
-  })
-  newTitle.value = ''
-  newContent.value = ''
-  saveDocs()
-}
-
-const removeDoc = (id) => {
-  docs.value = docs.value.filter((d) => d.id !== id)
-  saveDocs()
-}
-
-const setFilter = (mode, date = '') => {
-  filterMode.value = mode
-  filterDate.value = date
-}
+const currentDoc = computed(() => docs.value.find((d) => d.id === currentId.value))
 
 const filteredDocs = computed(() => {
-  const list = docs.value
-  if (filterMode.value === 'week') {
-    const today = new Date()
-    const weekAgo = new Date(today)
-    weekAgo.setDate(weekAgo.getDate() - 7)
-    return list.filter((d) => {
-      const created = new Date(d.createdAt)
-      return created >= weekAgo && created <= today
-    })
-  }
-  if (filterMode.value === 'custom' && filterDate.value) {
-    return list.filter((d) => d.createdAt.startsWith(filterDate.value))
+  let list = [...docs.value].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+  if (listFilter.value.trim()) {
+    const q = listFilter.value.trim().toLowerCase()
+    list = list.filter((d) => d.title.toLowerCase().includes(q) || (d.content && d.content.toLowerCase().includes(q)))
   }
   return list
 })
 
-const groupedByDate = computed(() => {
-  const map = new Map()
-  for (const d of filteredDocs.value) {
-    const date = d.createdAt.slice(0, 10)
-    if (!map.has(date)) map.set(date, [])
-    map.get(date).push(d)
-  }
-  return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
-})
-
-const formatDate = (str) => {
-  const d = new Date(str)
-  const today = new Date()
-  const diff = Math.floor((today - d) / 86400000)
-  if (diff === 0) return '今天'
-  if (diff === 1) return '昨天'
-  if (diff < 7) return `${diff} 天前`
+const formatTime = (iso) => {
+  const d = new Date(iso)
+  const now = new Date()
+  const diff = now - d
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  if (diff < 86400000 * 7) return `${Math.floor(diff / 86400000)} 天前`
   return d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
 }
+
+const createDoc = () => {
+  const doc = {
+    id: Date.now(),
+    title: '无标题文档',
+    content: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  docs.value.unshift(doc)
+  saveDocs()
+  openDoc(doc.id)
+}
+
+const openDoc = (id) => {
+  const doc = docs.value.find((d) => d.id === id)
+  if (!doc) return
+  currentId.value = id
+  editingTitle.value = doc.title
+  editingContent.value = doc.content || ''
+}
+
+const backToList = () => {
+  saveCurrentDoc()
+  currentId.value = null
+  editingTitle.value = ''
+  editingContent.value = ''
+}
+
+const saveCurrentDoc = () => {
+  if (!currentId.value) return
+  const doc = docs.value.find((d) => d.id === currentId.value)
+  if (!doc) return
+  doc.title = editingTitle.value.trim() || '无标题文档'
+  doc.content = editingContent.value
+  doc.updatedAt = new Date().toISOString()
+  saveDocs()
+}
+
+const removeDoc = (id, e) => {
+  e?.stopPropagation()
+  docs.value = docs.value.filter((d) => d.id !== id)
+  saveDocs()
+  if (currentId.value === id) {
+    currentId.value = null
+    editingTitle.value = ''
+    editingContent.value = ''
+  }
+}
+
+watch([editingTitle, editingContent], () => {
+  if (!currentId.value) return
+  const doc = docs.value.find((d) => d.id === currentId.value)
+  if (!doc) return
+  doc.title = editingTitle.value.trim() || '无标题文档'
+  doc.content = editingContent.value
+  doc.updatedAt = new Date().toISOString()
+  saveDocs()
+}, { flush: 'post' })
 
 onMounted(() => {
   loadDocs()
@@ -92,99 +110,91 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
-    <ManifestHeader title="文档" />
-
-    <!-- 筛选 -->
-    <div class="flex flex-wrap gap-2 mb-4 px-6">
-      <button
-        v-for="item in [
-          { mode: 'all', label: '全部' },
-          { mode: 'week', label: '近7天' },
-        ]"
-        :key="item.mode"
-        class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-        :class="filterMode === item.mode
-          ? 'bg-emerald-600 text-white'
-          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'"
-        @click="setFilter(item.mode)"
-      >
-        {{ item.label }}
-      </button>
-      <div class="flex items-center gap-2">
-        <input
-          v-model="filterDate"
-          type="date"
-          class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm"
-          @change="(e) => setFilter('custom', e.target.value)"
-        />
-        <span class="text-xs text-slate-500 dark:text-slate-400">指定日期</span>
-      </div>
-    </div>
-
-    <!-- 新增 -->
-    <div class="mx-6 mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800">
-      <div class="flex flex-wrap gap-3 items-end">
-        <div class="w-48 min-w-[120px]">
-          <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">标题</label>
-          <input
-            v-model="newTitle"
-            type="text"
-            placeholder="文档标题"
-            class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 text-sm"
-          />
-        </div>
-        <div class="flex-1 min-w-[200px]">
-          <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">内容</label>
-          <textarea
-            v-model="newContent"
-            rows="2"
-            placeholder="文档内容..."
-            class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 text-sm resize-none focus:ring-2 focus:ring-emerald-500"
-            @keydown.enter.ctrl="addDoc"
-          />
-        </div>
-        <button
-          class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm font-medium"
-          @click="addDoc"
-        >
-          添加
-        </button>
-      </div>
-      <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Ctrl+Enter 快速添加</p>
-    </div>
-
-    <!-- 按日期分组展示 -->
-    <div class="px-6 pb-8">
-      <div v-for="[date, items] in groupedByDate" :key="date" class="mb-6">
-        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-2">
-          <span>{{ formatDate(date) }}</span>
-          <span class="text-slate-400 dark:text-slate-500">· {{ date }}</span>
-        </h3>
-        <ul class="space-y-2">
-          <li
-            v-for="d in items"
-            :key="d.id"
-            class="group flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500"
+  <div class="min-h-screen flex flex-col">
+    <!-- 列表页 -->
+    <template v-if="currentId === null">
+      <ManifestHeader title="文档" />
+      <div class="px-6 pb-8 flex-1">
+        <div class="flex items-center gap-3 mb-6">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm font-medium transition-colors"
+            @click="createDoc"
           >
-            <div class="flex-1 min-w-0">
-              <p class="font-medium text-slate-800 dark:text-slate-100 text-sm">{{ d.title }}</p>
-              <p v-if="d.content" class="mt-1 text-slate-600 dark:text-slate-400 text-sm leading-relaxed whitespace-pre-wrap line-clamp-2">{{ d.content }}</p>
-            </div>
+            <span class="text-lg">+</span>
+            新建文档
+          </button>
+          <input
+            v-model="listFilter"
+            type="text"
+            placeholder="搜索文档..."
+            class="flex-1 max-w-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+          />
+        </div>
+
+        <div class="border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 overflow-hidden">
+          <div class="divide-y divide-slate-200 dark:divide-slate-600">
             <button
-              class="flex-shrink-0 p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
-              title="删除"
-              @click="removeDoc(d.id)"
+              v-for="d in filteredDocs"
+              :key="d.id"
+              type="button"
+              class="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group"
+              @click="openDoc(d.id)"
             >
-              ✕
+              <span class="text-2xl text-slate-400 dark:text-slate-500 shrink-0">📄</span>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-slate-800 dark:text-slate-100 truncate">{{ d.title }}</p>
+                <p v-if="d.content" class="mt-0.5 text-sm text-slate-500 dark:text-slate-400 truncate">{{ d.content.replace(/\s+/g, ' ').trim() }}</p>
+              </div>
+              <span class="text-xs text-slate-400 dark:text-slate-500 shrink-0">{{ formatTime(d.updatedAt || d.createdAt) }}</span>
+              <button
+                type="button"
+                class="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                title="删除"
+                @click="removeDoc(d.id, $event)"
+              >
+                ✕
+              </button>
             </button>
-          </li>
-        </ul>
+          </div>
+          <div v-if="filteredDocs.length === 0" class="py-16 text-center text-slate-500 dark:text-slate-400">
+            <p class="mb-1">{{ listFilter ? '未找到匹配的文档' : '暂无文档' }}</p>
+            <p class="text-sm">{{ listFilter ? '尝试其他关键词' : '点击「新建文档」开始' }}</p>
+          </div>
+        </div>
       </div>
-      <div v-if="groupedByDate.length === 0" class="text-center py-16 text-slate-500 dark:text-slate-400">
-        <p class="mb-2">暂无文档</p>
-        <p class="text-sm">在上方输入标题和内容并点击添加</p>
-      </div>
-    </div>
+    </template>
+
+    <!-- 文档编辑页（飞书式：标题 + 正文） -->
+    <template v-else>
+      <header class="sticky top-0 z-10 flex items-center gap-4 px-6 py-3 border-b border-slate-200 dark:border-slate-600 bg-white/95 dark:bg-slate-900/95 backdrop-blur">
+        <button
+          type="button"
+          class="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+          @click="backToList"
+        >
+          <span>←</span>
+          文档
+        </button>
+        <span v-if="currentDoc" class="text-xs text-slate-400 dark:text-slate-500">
+          {{ formatTime(currentDoc.updatedAt || currentDoc.createdAt) }} 更新
+        </span>
+      </header>
+
+      <main class="flex-1 max-w-3xl mx-auto w-full px-6 py-8">
+        <input
+          v-model="editingTitle"
+          type="text"
+          placeholder="无标题文档"
+          class="w-full text-3xl font-bold text-slate-800 dark:text-slate-100 bg-transparent border-0 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 mb-2"
+        />
+        <textarea
+          v-model="editingContent"
+          placeholder="输入正文，支持多行..."
+          rows="20"
+          class="w-full text-base text-slate-700 dark:text-slate-200 bg-transparent border-0 resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 leading-relaxed"
+        />
+      </main>
+    </template>
   </div>
 </template>
