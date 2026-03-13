@@ -4,6 +4,7 @@ import ManifestHeader from '../../components/ManifestHeader.vue'
 import { supabase } from '../../lib/supabase.js'
 import {
   isCloudEnabled,
+  isCloudFetchConfigured,
   fetchDocsFromCloud,
   fetchFoldersFromCloud,
   syncDocsToCloud,
@@ -387,6 +388,8 @@ onUnmounted(() => {
         </div>
       </Teleport>
       <div v-if="isCloudEnabled()" class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 pt-1 pr-[max(1.5rem,env(safe-area-inset-right))] pl-[max(1.5rem,env(safe-area-inset-left))]">
+        <span v-if="!isCloudFetchConfigured()" class="text-amber-600 dark:text-amber-400">☁️ 未登录拉取：需配置 VITE_SUPABASE_ADMIN_UID 并在 Supabase 添加 anon 只读策略（见 README）</span>
+        <template v-else>
         <span v-if="cloudSyncStatus === 'syncing'">☁️ 同步中…</span>
         <span v-else-if="cloudSyncStatus === 'ok'">☁️ 已同步到云端</span>
         <span v-else-if="cloudSyncStatus === 'error'" class="text-amber-600 dark:text-amber-400">☁️ 同步失败，数据已存本地<span v-if="cloudSyncError">：{{ cloudSyncError }}</span></span>
@@ -397,6 +400,7 @@ onUnmounted(() => {
         <template v-else>
           <button type="button" class="text-emerald-600 dark:text-emerald-400 hover:underline" @click="openAdminModal">管理员登录</button>
           <span class="text-slate-400">（仅查看）</span>
+        </template>
         </template>
       </div>
       <!-- 管理员登录弹窗（默认密码 root） -->

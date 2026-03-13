@@ -120,3 +120,8 @@ export async function syncDocsToCloud(docs) {
 }
 
 export { isCloudEnabled }
+
+/** 是否已配置「未登录可拉取管理员数据」：云端开启且填了 VITE_SUPABASE_ADMIN_UID（否则未登录时拉不到） */
+export function isCloudFetchConfigured() {
+  return isCloudEnabled() && !!getAdminUid()
+}

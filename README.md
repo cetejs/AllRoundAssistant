@@ -46,10 +46,12 @@ npm run build
 4. 在 **SQL Editor** 中执行（将 `你的管理员UUID` 替换为上一步的 UUID）：
    - `CREATE POLICY "document_folders_select_anon" ON document_folders FOR SELECT TO anon USING (user_id = '你的管理员UUID');`
    - `CREATE POLICY "documents_select_anon" ON documents FOR SELECT TO anon USING (user_id = '你的管理员UUID');`
-5. 在项目根目录创建 `.env`，参考 `.env.example` 填写 `VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY`、`VITE_SUPABASE_ADMIN_PASSWORD`（管理员登录密码，默认 root）。若需云端同步，再配置 `VITE_SUPABASE_ADMIN_EMAIL` 与 `VITE_SUPABASE_ADMIN_UID` 并在 Supabase 创建对应用户。
+5. 在项目根目录创建 `.env`，参考 `.env.example` 填写 `VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY`、`VITE_SUPABASE_ADMIN_PASSWORD`（管理员登录密码，默认 root）。**要让未登录用户也能拉取管理员数据（只读）**，必须配置 `VITE_SUPABASE_ADMIN_UID`（第 3 步复制的 UUID）。若需管理员编辑后同步到云端，再配置 `VITE_SUPABASE_ADMIN_EMAIL` 并在 Supabase 创建对应用户。
 6. 重新运行 `npm run dev` 或重新构建。
 
 **权限**：未登录或未以管理员登录时为**只读**（可看文档列表与内容）。点击「管理员登录」并输入与 `VITE_SUPABASE_ADMIN_PASSWORD` 一致的密码（默认 **root**）即登录成功，无需邮箱或用户名。登录后可编辑并（若配置了 Supabase 管理员邮箱）同步云端。
+
+**不登录也能拉取管理员数据（仅查看）**：当前逻辑已支持。未登录时会用 `VITE_SUPABASE_ADMIN_UID` 去拉该管理员的文档/文件夹。请务必：① 在 `.env` 或构建环境里配置 `VITE_SUPABASE_ADMIN_UID`（管理员用户的 UUID）；② 在 Supabase 执行第 4 步的两条 anon 只读策略，否则匿名请求会被 RLS 拒绝，拉不到数据。
 
 ## 技术栈
 
