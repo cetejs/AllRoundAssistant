@@ -359,7 +359,6 @@ onUnmounted(() => {
       <div v-if="showAdminModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="showAdminModal = false">
         <div class="w-full max-w-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 p-5 shadow-xl">
           <h3 class="text-lg font-medium text-slate-800 dark:text-slate-100 mb-4">管理员登录</h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">输入与配置中 VITE_SUPABASE_ADMIN_PASSWORD 一致的密码即可（默认 root）</p>
           <form @submit.prevent="submitAdminLogin" class="space-y-3">
             <input
               v-model="adminPassword"
