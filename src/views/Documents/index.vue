@@ -324,16 +324,22 @@ async function loadFromCloud() {
   }
 }
 
+function onPageShow(e) {
+  if (e?.persisted && isCloudEnabled()) loadFromCloud()
+}
+
 onMounted(() => {
   loadDocs()
   loadFolders()
   isAdmin.value = checkIsAdmin()
-  loadFromCloud()
+  if (isCloudEnabled()) loadFromCloud()
   document.addEventListener('click', closeMenu)
+  window.addEventListener('pageshow', onPageShow)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', closeMenu)
+  window.removeEventListener('pageshow', onPageShow)
 })
 </script>
 
