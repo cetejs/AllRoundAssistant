@@ -46,3 +46,8 @@ CREATE POLICY "documents_update" ON documents
   FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "documents_delete" ON documents
   FOR DELETE USING (auth.uid() = user_id);
+
+-- 查看者只读：允许匿名用户读取管理员的数据（需先创建管理员用户，将其 user_id 填入下方）
+-- 在 Supabase Dashboard → Authentication → Users 中创建用户（如 admin@allround.local / root），复制其 UUID，执行：
+-- CREATE POLICY "document_folders_select_anon" ON document_folders FOR SELECT TO anon USING (user_id = '你的管理员UUID');
+-- CREATE POLICY "documents_select_anon" ON documents FOR SELECT TO anon USING (user_id = '你的管理员UUID');

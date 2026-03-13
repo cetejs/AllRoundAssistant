@@ -1,57 +1,47 @@
 import { supabase, isCloudEnabled } from './supabase.js'
 
-/** 确保已登录（无 session 则匿名登录），返回是否可用 */
-export async function ensureCloudAuth() {
-  if (!supabase) return false
-  const { data: { session } } = await supabase.auth.getSession()
-  if (session) return true
-  const { error } = await supabase.auth.signInAnonymously()
-  return !error
-}
+const ADMIN_PASSWORD = 'root'
+const getAdminEmail = () => import.meta.env.VITE_SUPABASE_ADMIN_EMAIL || 'admin@allround.local'
+const getAdminUid = () => import.meta.env.VITE_SUPABASE_ADMIN_UID || null
 
-/** 当前用户信息：{ id, email, isAnonymous }，未登录为 null */
-export async function getCurrentUser() {
-  if (!supabase) return null
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  return {
-    id: user.id,
-    email: user.email ?? null,
-    isAnonymous: user.is_anonymous ?? true,
-  }
-}
-
-/** 邮箱+密码登录（多端同账号，可看到同一份云端数据） */
-export async function signInWithEmail(email, password) {
+/** 管理员登录（默认密码 root），仅当 password 正确时用管理员账号登录 Supabase */
+export async function adminSignIn(password) {
   if (!supabase) throw new Error('云端未配置')
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (password !== ADMIN_PASSWORD) throw new Error('密码错误')
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: getAdminEmail(),
+    password: ADMIN_PASSWORD,
+  })
   if (error) throw error
   return data
 }
 
-/** 邮箱+密码注册 */
-export async function signUpWithEmail(email, password) {
-  if (!supabase) throw new Error('云端未配置')
-  const { data, error } = await supabase.auth.signUp({ email, password })
-  if (error) throw error
-  return data
-}
-
-/** 登出（下次进入会再匿名登录，数据仅本机） */
-export async function signOut() {
+/** 管理员登出 */
+export async function adminSignOut() {
   if (!supabase) return
   await supabase.auth.signOut()
 }
 
-/** 从云端拉取文件夹列表 */
+/** 当前是否为管理员（已用管理员账号登录） */
+export async function checkIsAdmin() {
+  if (!supabase) return false
+  const uid = getAdminUid()
+  if (!uid) return false
+  const { data: { user } } = await supabase.auth.getUser()
+  return !!(user && user.id === uid)
+}
+
+/** 从云端拉取文件夹列表（管理员拉自己的，查看者拉管理员的） */
 export async function fetchFoldersFromCloud() {
   if (!supabase) return []
+  const uid = getAdminUid()
+  if (!uid) return []
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+  const readUid = user && user.id === uid ? user.id : uid
   const { data, error } = await supabase
     .from('document_folders')
     .select('id, name, created_at')
-    .eq('user_id', user.id)
+    .eq('user_id', readUid)
     .order('created_at', { ascending: true })
   if (error) throw error
   return (data || []).map((row) => ({
@@ -61,15 +51,17 @@ export async function fetchFoldersFromCloud() {
   }))
 }
 
-/** 从云端拉取文档列表 */
+/** 从云端拉取文档列表（管理员拉自己的，查看者拉管理员的） */
 export async function fetchDocsFromCloud() {
   if (!supabase) return []
+  const uid = getAdminUid()
+  if (!uid) return []
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+  const readUid = user && user.id === uid ? user.id : uid
   const { data, error } = await supabase
     .from('documents')
     .select('id, title, content, folder_id, created_at, updated_at')
-    .eq('user_id', user.id)
+    .eq('user_id', readUid)
     .order('updated_at', { ascending: false })
   if (error) throw error
   return (data || []).map((row) => ({
@@ -82,11 +74,13 @@ export async function fetchDocsFromCloud() {
   }))
 }
 
-/** 将文件夹列表同步到云端（全量覆盖：先清空该用户云端文件夹，再写入当前列表，删除会生效） */
+/** 仅管理员可写：将文件夹列表同步到云端 */
 export async function syncFoldersToCloud(folders) {
   if (!supabase) return
+  const uid = getAdminUid()
+  if (!uid) return
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  if (!user || user.id !== uid) return
   const rows = folders.map((f) => ({
     id: String(f.id),
     name: f.name,
@@ -100,11 +94,13 @@ export async function syncFoldersToCloud(folders) {
   }
 }
 
-/** 将文档列表同步到云端（全量覆盖：先清空该用户云端文档，再写入当前列表，删除会生效） */
+/** 仅管理员可写：将文档列表同步到云端 */
 export async function syncDocsToCloud(docs) {
   if (!supabase) return
+  const uid = getAdminUid()
+  if (!uid) return
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  if (!user || user.id !== uid) return
   const rows = docs.map((d) => ({
     id: Number(d.id),
     title: d.title || '无标题文档',

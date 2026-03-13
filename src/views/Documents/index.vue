@@ -4,15 +4,13 @@ import ManifestHeader from '../../components/ManifestHeader.vue'
 import { supabase } from '../../lib/supabase.js'
 import {
   isCloudEnabled,
-  ensureCloudAuth,
   fetchDocsFromCloud,
   fetchFoldersFromCloud,
   syncDocsToCloud,
   syncFoldersToCloud,
-  getCurrentUser,
-  signInWithEmail,
-  signUpWithEmail,
-  signOut,
+  adminSignIn,
+  adminSignOut,
+  checkIsAdmin,
 } from '../../lib/cloud.js'
 
 const STORAGE_KEY = 'allround-documents'
@@ -30,14 +28,11 @@ const menuDocId = ref(null) // 当前显示操作菜单的文档 id
 const moveTargetFolderId = ref(null) // 移动时选中的目标文件夹
 const cloudSyncStatus = ref(null) // null | 'ok' | 'syncing' | 'error'
 let cloudSyncDocsTimer = null
-// 多端同步：邮箱登录后可在其他设备用同一账号看到同一份数据
-const authUser = ref(null) // { id, email, isAnonymous } | null
-const showAuthModal = ref(false)
-const authMode = ref('login') // 'login' | 'register'
-const authEmail = ref('')
-const authPassword = ref('')
-const authError = ref('')
-const authLoading = ref(false)
+const isAdmin = ref(false) // 仅管理员可编辑，其他人只读
+const showAdminModal = ref(false)
+const adminPassword = ref('')
+const adminError = ref('')
+const adminLoading = ref(false)
 const moveSubmenuOnLeft = ref(false) // 右侧空间不足时子菜单向左展开
 const menuPopupRef = ref(null)
 
@@ -194,7 +189,7 @@ const backToList = () => {
 }
 
 const saveCurrentDoc = () => {
-  if (!currentId.value) return
+  if (!isAdmin.value || !currentId.value) return
   const doc = docs.value.find((d) => d.id === currentId.value)
   if (!doc) return
   doc.title = editingTitle.value.trim() || '无标题文档'
@@ -249,7 +244,7 @@ const toggleDocMenu = (id, e) => {
 }
 
 watch([editingTitle, editingContent], () => {
-  if (!currentId.value) return
+  if (!isAdmin.value || !currentId.value) return
   const doc = docs.value.find((d) => d.id === currentId.value)
   if (!doc) return
   doc.title = editingTitle.value.trim() || '无标题文档'
@@ -271,56 +266,36 @@ function updateMoveSubmenuPosition() {
   })
 }
 
-async function refreshAuthUser() {
-  if (!isCloudEnabled()) return
-  authUser.value = await getCurrentUser()
+function openAdminModal() {
+  adminPassword.value = ''
+  adminError.value = ''
+  showAdminModal.value = true
 }
 
-function openAuthModal(mode) {
-  authMode.value = mode
-  authEmail.value = ''
-  authPassword.value = ''
-  authError.value = ''
-  showAuthModal.value = true
-}
-
-async function submitAuth() {
-  const email = authEmail.value.trim()
-  const password = authPassword.value
-  if (!email || !password) {
-    authError.value = '请填写邮箱和密码'
-    return
-  }
-  authLoading.value = true
-  authError.value = ''
+async function submitAdminLogin() {
+  const password = adminPassword.value
+  adminLoading.value = true
+  adminError.value = ''
   try {
-    if (authMode.value === 'register') {
-      await signUpWithEmail(email, password)
-      authError.value = '注册成功，请查收邮件确认（若需）。已登录。'
-    } else {
-      await signInWithEmail(email, password)
-    }
-    showAuthModal.value = false
+    await adminSignIn(password)
+    showAdminModal.value = false
+    isAdmin.value = true
     await loadFromCloud()
-    await refreshAuthUser()
   } catch (e) {
-    authError.value = e?.message || '登录失败'
+    adminError.value = e?.message || '登录失败'
   } finally {
-    authLoading.value = false
+    adminLoading.value = false
   }
 }
 
-async function doSignOut() {
-  await signOut()
-  await ensureCloudAuth()
+async function doAdminSignOut() {
+  await adminSignOut()
+  isAdmin.value = false
   await loadFromCloud()
-  await refreshAuthUser()
 }
 
 async function loadFromCloud() {
   if (!isCloudEnabled()) return
-  const ok = await ensureCloudAuth()
-  if (!ok) return
   cloudSyncStatus.value = 'syncing'
   try {
     const [cloudFolders, cloudDocs] = await Promise.all([
@@ -333,7 +308,7 @@ async function loadFromCloud() {
       docs.value = cloudDocs
       localStorage.setItem(STORAGE_KEY_FOLDERS, JSON.stringify(folders.value))
       localStorage.setItem(STORAGE_KEY, JSON.stringify(docs.value))
-    } else {
+    } else if (isAdmin.value) {
       await Promise.all([
         syncFoldersToCloud(folders.value),
         syncDocsToCloud(docs.value),
@@ -349,13 +324,16 @@ async function loadFromCloud() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadDocs()
   loadFolders()
-  loadFromCloud().then(() => refreshAuthUser())
+  isAdmin.value = await checkIsAdmin()
+  loadFromCloud()
   document.addEventListener('click', closeMenu)
   if (supabase) {
-    supabase.auth.onAuthStateChange(() => refreshAuthUser())
+    supabase.auth.onAuthStateChange(async () => {
+      isAdmin.value = await checkIsAdmin()
+    })
   }
 })
 
@@ -373,45 +351,34 @@ onUnmounted(() => {
         <span v-if="cloudSyncStatus === 'syncing'">☁️ 同步中…</span>
         <span v-else-if="cloudSyncStatus === 'ok'">☁️ 已同步到云端</span>
         <span v-else-if="cloudSyncStatus === 'error'" class="text-amber-600 dark:text-amber-400">☁️ 同步失败，数据已存本地</span>
-        <template v-if="authUser && !authUser.isAnonymous">
-          <span>已登录 {{ authUser.email }}</span>
-          <button type="button" class="text-slate-600 dark:text-slate-300 hover:underline" @click="doSignOut">退出</button>
+        <template v-if="isAdmin">
+          <span>已登录（管理员）</span>
+          <button type="button" class="text-slate-600 dark:text-slate-300 hover:underline" @click="doAdminSignOut">退出</button>
         </template>
         <template v-else>
-          <button type="button" class="text-emerald-600 dark:text-emerald-400 hover:underline" @click="openAuthModal('login')">登录</button>
-          <button type="button" class="text-slate-600 dark:text-slate-300 hover:underline" @click="openAuthModal('register')">注册</button>
-          <span class="text-slate-400">（登录后可在其他设备看到同一份数据）</span>
+          <button type="button" class="text-emerald-600 dark:text-emerald-400 hover:underline" @click="openAdminModal">管理员登录</button>
+          <span class="text-slate-400">（仅查看）</span>
         </template>
       </div>
-      <!-- 登录/注册弹窗 -->
-      <div v-if="showAuthModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="showAuthModal = false">
+      <!-- 管理员登录弹窗（默认密码 root） -->
+      <div v-if="showAdminModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="showAdminModal = false">
         <div class="w-full max-w-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 p-5 shadow-xl">
-          <h3 class="text-lg font-medium text-slate-800 dark:text-slate-100 mb-4">{{ authMode === 'register' ? '注册' : '登录' }}</h3>
-          <form @submit.prevent="submitAuth" class="space-y-3">
+          <h3 class="text-lg font-medium text-slate-800 dark:text-slate-100 mb-4">管理员登录</h3>
+          <form @submit.prevent="submitAdminLogin" class="space-y-3">
             <input
-              v-model="authEmail"
-              type="email"
-              placeholder="邮箱"
-              class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm"
-              autocomplete="email"
-            />
-            <input
-              v-model="authPassword"
+              v-model="adminPassword"
               type="password"
               placeholder="密码"
               class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm"
               autocomplete="current-password"
             />
-            <p v-if="authError" class="text-sm text-amber-600 dark:text-amber-400">{{ authError }}</p>
+            <p v-if="adminError" class="text-sm text-amber-600 dark:text-amber-400">{{ adminError }}</p>
             <div class="flex gap-2">
-              <button type="button" class="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 text-slate-700 dark:text-slate-200 text-sm" @click="showAuthModal = false">取消</button>
-              <button type="submit" class="flex-1 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm disabled:opacity-50" :disabled="authLoading">
-                {{ authLoading ? '…' : (authMode === 'register' ? '注册' : '登录') }}
+              <button type="button" class="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 text-slate-700 dark:text-slate-200 text-sm" @click="showAdminModal = false">取消</button>
+              <button type="submit" class="flex-1 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm disabled:opacity-50" :disabled="adminLoading">
+                {{ adminLoading ? '…' : '登录' }}
               </button>
             </div>
-            <button type="button" class="w-full text-center text-sm text-slate-500 hover:underline" @click="authMode = authMode === 'login' ? 'register' : 'login'">
-              {{ authMode === 'login' ? '没有账号？去注册' : '已有账号？去登录' }}
-            </button>
           </form>
         </div>
       </div>
@@ -450,6 +417,7 @@ onUnmounted(() => {
               <span class="ml-auto text-slate-400 dark:text-slate-500 shrink-0">{{ docCountInFolder(f.id) }}</span>
             </button>
             <button
+              v-if="isAdmin"
               type="button"
               class="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
               title="删除文件夹"
@@ -458,7 +426,7 @@ onUnmounted(() => {
               ✕
             </button>
           </div>
-          <div class="pt-2 border-t border-slate-200 dark:border-slate-600">
+          <div v-if="isAdmin" class="pt-2 border-t border-slate-200 dark:border-slate-600">
             <div v-if="showNewFolder" class="flex items-center gap-1 px-2">
               <input
                 v-model="newFolderName"
@@ -487,6 +455,7 @@ onUnmounted(() => {
         <div class="flex-1 min-w-0 flex flex-col">
           <div class="flex items-center gap-3 mb-4">
             <button
+              v-if="isAdmin"
               type="button"
               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm font-medium transition-colors"
               @click="createDoc"
@@ -521,7 +490,7 @@ onUnmounted(() => {
                   <p v-if="d.content" class="mt-0.5 text-sm text-slate-500 dark:text-slate-400 truncate">{{ d.content.replace(/\s+/g, ' ').trim() }}</p>
                 </div>
                 <span class="text-xs text-slate-400 dark:text-slate-500 shrink-0 relative z-10">{{ formatTime(d.updatedAt || d.createdAt) }}</span>
-                <div class="flex items-center gap-0.5 shrink-0 relative z-10">
+                <div v-if="isAdmin" class="flex items-center gap-0.5 shrink-0 relative z-10">
                   <button
                     type="button"
                     class="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -585,12 +554,14 @@ onUnmounted(() => {
           v-model="editingTitle"
           type="text"
           placeholder="无标题文档"
+          :readonly="!isAdmin"
           class="w-full text-3xl font-bold text-slate-800 dark:text-slate-100 bg-transparent border-0 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 mb-2"
         />
         <textarea
           v-model="editingContent"
           placeholder="输入正文，支持多行..."
           rows="20"
+          :readonly="!isAdmin"
           class="w-full text-base text-slate-700 dark:text-slate-200 bg-transparent border-0 resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 leading-relaxed"
         />
       </main>
