@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import ManifestHeader from '../../components/ManifestHeader.vue'
 import { supabase } from '../../lib/supabase.js'
 import {
@@ -33,8 +33,8 @@ const showAdminModal = ref(false)
 const adminPassword = ref('')
 const adminError = ref('')
 const adminLoading = ref(false)
-const moveSubmenuOnLeft = ref(false) // 右侧空间不足时子菜单向左展开
-const menuPopupRef = ref(null)
+const moveSubmenuOnLeft = ref(false)
+const menuTriggerRect = ref({ top: 0, left: 0, right: 0, bottom: 0 })
 
 const loadDocs = () => {
   try {
@@ -237,10 +237,20 @@ const moveDoc = (docId, targetFolderId, e) => {
   moveTargetFolderId.value = null
 }
 
+const menuDoc = computed(() => docs.value.find((d) => d.id === menuDocId.value))
+
 const toggleDocMenu = (id, e) => {
   e?.stopPropagation()
-  menuDocId.value = menuDocId.value === id ? null : id
-  if (menuDocId.value) updateMoveSubmenuPosition()
+  if (menuDocId.value === id) {
+    menuDocId.value = null
+    return
+  }
+  menuDocId.value = id
+  if (e?.currentTarget) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    menuTriggerRect.value = { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom }
+    moveSubmenuOnLeft.value = rect.right + 120 + 100 > window.innerWidth
+  }
 }
 
 watch([editingTitle, editingContent], () => {
@@ -255,16 +265,6 @@ watch([editingTitle, editingContent], () => {
 
 const closeMenu = () => { menuDocId.value = null }
 
-function updateMoveSubmenuPosition() {
-  moveSubmenuOnLeft.value = false
-  if (!menuDocId.value || !menuPopupRef.value) return
-  nextTick(() => {
-    if (!menuPopupRef.value) return
-    const rect = menuPopupRef.value.getBoundingClientRect()
-    const submenuWidth = 120
-    if (rect.right + submenuWidth > window.innerWidth) moveSubmenuOnLeft.value = true
-  })
-}
 
 function openAdminModal() {
   adminPassword.value = ''
@@ -348,6 +348,30 @@ onUnmounted(() => {
     <!-- 列表页 -->
     <template v-if="currentId === null">
       <ManifestHeader title="文档" />
+      <Teleport to="body">
+        <div
+          v-if="menuDocId && menuDoc"
+          class="fixed py-1 min-w-[120px] rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg z-[9999]"
+          :style="{ top: (menuTriggerRect.bottom + 4) + 'px', left: Math.max(8, menuTriggerRect.right - 120) + 'px' }"
+          @click.stop
+        >
+          <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700" @click="copyDoc(menuDoc, $event)">复制</button>
+          <div class="relative">
+            <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between" @click.stop>
+              移动到
+              <span>▸</span>
+            </button>
+            <div
+              class="absolute top-0 py-1 min-w-[100px] rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg z-10"
+              :class="moveSubmenuOnLeft ? 'right-full left-auto mr-0.5' : 'left-full ml-0.5'"
+            >
+              <button type="button" class="w-full px-3 py-1.5 text-left text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700" @click="moveDoc(menuDoc.id, null, $event)">未分类</button>
+              <button v-for="f in folders" :key="f.id" type="button" class="w-full px-3 py-1.5 text-left text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700" @click="moveDoc(menuDoc.id, f.id, $event)">{{ f.name }}</button>
+            </div>
+          </div>
+          <button type="button" class="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20" @click="removeDoc(menuDoc.id, $event)">删除</button>
+        </div>
+      </Teleport>
       <div v-if="isCloudEnabled()" class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 pt-1 pr-[max(1.5rem,env(safe-area-inset-right))] pl-[max(1.5rem,env(safe-area-inset-left))]">
         <span v-if="cloudSyncStatus === 'syncing'">☁️ 同步中…</span>
         <span v-else-if="cloudSyncStatus === 'ok'">☁️ 已同步到云端</span>
@@ -478,7 +502,7 @@ onUnmounted(() => {
               <!-- 文档行 -->
               <div
                 class="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group relative"
-                :class="{ 'bg-slate-50 dark:bg-slate-700/50 z-30': menuDocId === d.id }"
+                :class="{ 'bg-slate-50 dark:bg-slate-700/50': menuDocId === d.id }"
               >
                 <button
                   type="button"
@@ -500,27 +524,6 @@ onUnmounted(() => {
                   >
                     ⋯
                   </button>
-                  <div
-                    v-if="menuDocId === d.id"
-                    ref="menuPopupRef"
-                    class="absolute right-0 top-full mt-1 py-1 min-w-[120px] rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg z-20"
-                  >
-                    <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700" @click="copyDoc(d, $event)">复制</button>
-                    <div class="relative">
-                      <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between" @click.stop>
-                        移动到
-                        <span>▸</span>
-                      </button>
-                      <div
-                        class="absolute top-0 py-1 min-w-[100px] rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg z-30"
-                        :class="moveSubmenuOnLeft ? 'right-full left-auto mr-0.5' : 'left-full ml-0.5'"
-                      >
-                        <button type="button" class="w-full px-3 py-1.5 text-left text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700" @click="moveDoc(d.id, null, $event)">未分类</button>
-                        <button v-for="f in folders" :key="f.id" type="button" class="w-full px-3 py-1.5 text-left text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700" @click="moveDoc(d.id, f.id, $event)">{{ f.name }}</button>
-                      </div>
-                    </div>
-                    <button type="button" class="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20" @click="removeDoc(d.id, $event)">删除</button>
-                  </div>
                 </div>
               </div>
             </template>
