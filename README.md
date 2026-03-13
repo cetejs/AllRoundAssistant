@@ -31,8 +31,8 @@ npm run build
 
 **若希望线上站点也使用文档云端同步与管理员权限**：在仓库 **Settings → Secrets and variables → Actions** 中新增：
 - `VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY`
-- `VITE_SUPABASE_ADMIN_EMAIL`（管理员邮箱，如 `admin@allround.local`）
-- `VITE_SUPABASE_ADMIN_UID`（Supabase 中该管理员用户的 UUID）
+- `VITE_SUPABASE_ADMIN_EMAIL`（管理员邮箱）、`VITE_SUPABASE_ADMIN_UID`（该用户 UUID）
+- `VITE_SUPABASE_ADMIN_PASSWORD`（可选，管理员密码，默认 root）
 
 保存后重新跑一次 Actions 或再 push 一次即可。未配置时线上版仍只使用本地存储。
 
@@ -42,14 +42,14 @@ npm run build
 
 1. 在 [Supabase](https://supabase.com) 创建项目。
 2. **SQL Editor** 中执行 `supabase/schema.sql` 创建表与 RLS。
-3. **Authentication → Users** 中手动添加用户：邮箱填 `admin@allround.local`（或自定），密码设为 **root**，创建后复制该用户的 **UUID**。
+3. **Authentication → Users** 中手动添加用户：邮箱填 `admin@allround.local`（或自定），密码自定（默认用 **root**），创建后复制该用户的 **UUID**。
 4. 在 **SQL Editor** 中执行（将 `你的管理员UUID` 替换为上一步的 UUID）：
    - `CREATE POLICY "document_folders_select_anon" ON document_folders FOR SELECT TO anon USING (user_id = '你的管理员UUID');`
    - `CREATE POLICY "documents_select_anon" ON documents FOR SELECT TO anon USING (user_id = '你的管理员UUID');`
-5. 在项目根目录创建 `.env`，参考 `.env.example` 填写 `VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY`、`VITE_SUPABASE_ADMIN_EMAIL`、`VITE_SUPABASE_ADMIN_UID`。
+5. 在项目根目录创建 `.env`，参考 `.env.example` 填写 `VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY`、`VITE_SUPABASE_ADMIN_EMAIL`、`VITE_SUPABASE_ADMIN_UID`；若管理员密码不是 root，需设置 `VITE_SUPABASE_ADMIN_PASSWORD` 与 Supabase 中一致。
 6. 重新运行 `npm run dev` 或重新构建。
 
-**权限**：未登录或未以管理员登录时为**只读**（可看文档列表与内容）。点击「管理员登录」并输入默认密码 **root** 后获得编辑权限（新建/删除/移动文档与文件夹，编辑内容并同步云端）。
+**权限**：未登录或未以管理员登录时为**只读**（可看文档列表与内容）。点击「管理员登录」并输入管理员密码（默认 **root**，可通过 `VITE_SUPABASE_ADMIN_PASSWORD` 配置）后获得编辑权限（新建/删除/移动文档与文件夹，编辑内容并同步云端）。密码需与 Supabase 中该管理员用户的密码完全一致。
 
 ## 技术栈
 

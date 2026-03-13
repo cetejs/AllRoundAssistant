@@ -1,16 +1,18 @@
 import { supabase, isCloudEnabled } from './supabase.js'
 
-const ADMIN_PASSWORD = 'root'
 const getAdminEmail = () => import.meta.env.VITE_SUPABASE_ADMIN_EMAIL || 'admin@allround.local'
 const getAdminUid = () => import.meta.env.VITE_SUPABASE_ADMIN_UID || null
+/** 管理员密码：默认 root，可通过 VITE_SUPABASE_ADMIN_PASSWORD 覆盖（需与 Supabase 中该用户密码一致） */
+const getAdminPassword = () => import.meta.env.VITE_SUPABASE_ADMIN_PASSWORD || 'root'
 
 /** 管理员登录（默认密码 root），仅当 password 正确时用管理员账号登录 Supabase */
 export async function adminSignIn(password) {
   if (!supabase) throw new Error('云端未配置')
-  if (password !== ADMIN_PASSWORD) throw new Error('密码错误')
+  const expected = getAdminPassword()
+  if (!password || password !== expected) throw new Error('密码错误')
   const { data, error } = await supabase.auth.signInWithPassword({
     email: getAdminEmail(),
-    password: ADMIN_PASSWORD,
+    password: password,
   })
   if (error) throw error
   return data
