@@ -27,6 +27,7 @@ const showNewFolder = ref(false)
 const menuDocId = ref(null) // 当前显示操作菜单的文档 id
 const moveTargetFolderId = ref(null) // 移动时选中的目标文件夹
 const cloudSyncStatus = ref(null) // null | 'ok' | 'syncing' | 'error'
+const cloudSyncError = ref('') // 同步失败时的错误信息
 let cloudSyncDocsTimer = null
 const isAdmin = ref(false) // 仅管理员可编辑，其他人只读
 const showAdminModal = ref(false)
@@ -66,17 +67,21 @@ const saveDocs = (immediate = false) => {
     clearTimeout(cloudSyncDocsTimer)
     if (immediate) {
       cloudSyncStatus.value = 'syncing'
+      cloudSyncError.value = ''
       syncDocsToCloud(docs.value)
-        .then(() => { cloudSyncStatus.value = 'ok' })
-        .catch(() => { cloudSyncStatus.value = 'error' })
+        .then(() => { cloudSyncStatus.value = 'ok'; cloudSyncError.value = '' })
+        .catch((e) => { cloudSyncStatus.value = 'error'; cloudSyncError.value = e?.message || '' })
     } else {
       cloudSyncDocsTimer = setTimeout(async () => {
         cloudSyncStatus.value = 'syncing'
+        cloudSyncError.value = ''
         try {
           await syncDocsToCloud(docs.value)
           cloudSyncStatus.value = 'ok'
-        } catch {
+          cloudSyncError.value = ''
+        } catch (e) {
           cloudSyncStatus.value = 'error'
+          cloudSyncError.value = e?.message || ''
         }
       }, 1500)
     }
@@ -87,9 +92,10 @@ const saveFolders = () => {
   localStorage.setItem(STORAGE_KEY_FOLDERS, JSON.stringify(folders.value))
   if (isCloudEnabled()) {
     cloudSyncStatus.value = 'syncing'
+    cloudSyncError.value = ''
     syncFoldersToCloud(folders.value)
-      .then(() => { cloudSyncStatus.value = 'ok' })
-      .catch(() => { cloudSyncStatus.value = 'error' })
+      .then(() => { cloudSyncStatus.value = 'ok'; cloudSyncError.value = '' })
+      .catch((e) => { cloudSyncStatus.value = 'error'; cloudSyncError.value = e?.message || '' })
   }
 }
 
@@ -296,7 +302,8 @@ async function doAdminSignOut() {
 
 async function loadFromCloud() {
   if (!isCloudEnabled()) return
-  cloudSyncStatus.value = 'syncing'
+    cloudSyncStatus.value = 'syncing'
+    cloudSyncError.value = ''
   try {
     const [cloudFolders, cloudDocs] = await Promise.all([
       fetchFoldersFromCloud(),
@@ -315,8 +322,9 @@ async function loadFromCloud() {
       ])
     }
     cloudSyncStatus.value = 'ok'
-  } catch {
+  } catch (e) {
     cloudSyncStatus.value = 'error'
+    cloudSyncError.value = e?.message || ''
     if (docs.value.length === 0 && folders.value.length === 0) {
       loadDocs()
       loadFolders()
@@ -375,7 +383,7 @@ onUnmounted(() => {
       <div v-if="isCloudEnabled()" class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 pt-1 pr-[max(1.5rem,env(safe-area-inset-right))] pl-[max(1.5rem,env(safe-area-inset-left))]">
         <span v-if="cloudSyncStatus === 'syncing'">☁️ 同步中…</span>
         <span v-else-if="cloudSyncStatus === 'ok'">☁️ 已同步到云端</span>
-        <span v-else-if="cloudSyncStatus === 'error'" class="text-amber-600 dark:text-amber-400">☁️ 同步失败，数据已存本地</span>
+        <span v-else-if="cloudSyncStatus === 'error'" class="text-amber-600 dark:text-amber-400">☁️ 同步失败，数据已存本地<span v-if="cloudSyncError">：{{ cloudSyncError }}</span></span>
         <template v-if="isAdmin">
           <span>已登录（管理员）</span>
           <button type="button" class="text-slate-600 dark:text-slate-300 hover:underline" @click="doAdminSignOut">退出</button>

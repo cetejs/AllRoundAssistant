@@ -2,7 +2,7 @@ import { supabase, isCloudEnabled } from './supabase.js'
 
 const ADMIN_SESSION_KEY = 'allround-admin'
 
-const getAdminEmail = () => import.meta.env.VITE_SUPABASE_ADMIN_EMAIL || ''
+const getAdminEmail = () => import.meta.env.VITE_SUPABASE_ADMIN_EMAIL || 'admin@allround.local'
 const getAdminUid = () => import.meta.env.VITE_SUPABASE_ADMIN_UID || null
 /** 管理员密码：与 VITE_SUPABASE_ADMIN_PASSWORD 一致即登录成功（默认 root） */
 const getAdminPassword = () => import.meta.env.VITE_SUPABASE_ADMIN_PASSWORD || 'root'
@@ -12,7 +12,7 @@ export async function adminSignIn(password) {
   const expected = getAdminPassword()
   if (!password || password !== expected) throw new Error('密码错误')
   if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(ADMIN_SESSION_KEY, '1')
-  if (supabase && getAdminEmail()) {
+  if (supabase) {
     try {
       await supabase.auth.signInWithPassword({ email: getAdminEmail(), password })
     } catch {
@@ -80,9 +80,9 @@ export async function fetchDocsFromCloud() {
 export async function syncFoldersToCloud(folders) {
   if (!supabase) return
   const uid = getAdminUid()
-  if (!uid) return
+  if (!uid) throw new Error('未配置 VITE_SUPABASE_ADMIN_UID，无法同步到云端')
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user || user.id !== uid) return
+  if (!user || user.id !== uid) throw new Error('未以 Supabase 管理员登录，无法同步。请在 Supabase 创建用户 ' + getAdminEmail() + ' 且密码与管理员密码一致')
   const rows = folders.map((f) => ({
     id: String(f.id),
     name: f.name,
@@ -100,9 +100,9 @@ export async function syncFoldersToCloud(folders) {
 export async function syncDocsToCloud(docs) {
   if (!supabase) return
   const uid = getAdminUid()
-  if (!uid) return
+  if (!uid) throw new Error('未配置 VITE_SUPABASE_ADMIN_UID，无法同步到云端')
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user || user.id !== uid) return
+  if (!user || user.id !== uid) throw new Error('未以 Supabase 管理员登录，无法同步。请在 Supabase 创建用户 ' + getAdminEmail() + ' 且密码与管理员密码一致')
   const rows = docs.map((d) => ({
     id: Number(d.id),
     title: d.title || '无标题文档',
