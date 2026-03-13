@@ -1,6 +1,14 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import ManifestHeader from '../../components/ManifestHeader.vue'
+import {
+  isCloudEnabled,
+  ensureCloudAuth,
+  fetchDocsFromCloud,
+  fetchFoldersFromCloud,
+  syncDocsToCloud,
+  syncFoldersToCloud,
+} from '../../lib/cloud.js'
 
 const STORAGE_KEY = 'allround-documents'
 const STORAGE_KEY_FOLDERS = 'allround-document-folders'
@@ -17,6 +25,8 @@ const menuDocId = ref(null) // 当前显示操作菜单的文档 id
 const moveTargetFolderId = ref(null) // 移动时选中的目标文件夹
 const dateEditDocId = ref(null) // 当前编辑日期的文档 id
 const dateEditValue = ref('') // 日期输入 YYYY-MM-DD
+const cloudSyncStatus = ref(null) // null | 'ok' | 'syncing' | 'error'
+let cloudSyncDocsTimer = null
 
 const loadDocs = () => {
   try {
@@ -43,10 +53,28 @@ const loadFolders = () => {
 
 const saveDocs = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(docs.value))
+  if (isCloudEnabled()) {
+    clearTimeout(cloudSyncDocsTimer)
+    cloudSyncDocsTimer = setTimeout(async () => {
+      cloudSyncStatus.value = 'syncing'
+      try {
+        await syncDocsToCloud(docs.value)
+        cloudSyncStatus.value = 'ok'
+      } catch {
+        cloudSyncStatus.value = 'error'
+      }
+    }, 1500)
+  }
 }
 
 const saveFolders = () => {
   localStorage.setItem(STORAGE_KEY_FOLDERS, JSON.stringify(folders.value))
+  if (isCloudEnabled()) {
+    cloudSyncStatus.value = 'syncing'
+    syncFoldersToCloud(folders.value)
+      .then(() => { cloudSyncStatus.value = 'ok' })
+      .catch(() => { cloudSyncStatus.value = 'error' })
+  }
 }
 
 const currentDoc = computed(() => docs.value.find((d) => d.id === currentId.value))
@@ -232,9 +260,42 @@ watch([editingTitle, editingContent], () => {
 
 const closeMenu = () => { menuDocId.value = null }
 
+async function loadFromCloud() {
+  if (!isCloudEnabled()) return
+  const ok = await ensureCloudAuth()
+  if (!ok) return
+  cloudSyncStatus.value = 'syncing'
+  try {
+    const [cloudFolders, cloudDocs] = await Promise.all([
+      fetchFoldersFromCloud(),
+      fetchDocsFromCloud(),
+    ])
+    const hasCloudData = cloudFolders.length > 0 || cloudDocs.length > 0
+    if (hasCloudData) {
+      folders.value = cloudFolders
+      docs.value = cloudDocs
+      localStorage.setItem(STORAGE_KEY_FOLDERS, JSON.stringify(folders.value))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(docs.value))
+    } else {
+      await Promise.all([
+        syncFoldersToCloud(folders.value),
+        syncDocsToCloud(docs.value),
+      ])
+    }
+    cloudSyncStatus.value = 'ok'
+  } catch {
+    cloudSyncStatus.value = 'error'
+    if (docs.value.length === 0 && folders.value.length === 0) {
+      loadDocs()
+      loadFolders()
+    }
+  }
+}
+
 onMounted(() => {
   loadDocs()
   loadFolders()
+  loadFromCloud()
   document.addEventListener('click', closeMenu)
 })
 
@@ -248,6 +309,11 @@ onUnmounted(() => {
     <!-- 列表页 -->
     <template v-if="currentId === null">
       <ManifestHeader title="文档" />
+      <div v-if="isCloudEnabled()" class="px-6 pt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <span v-if="cloudSyncStatus === 'syncing'">☁️ 同步中…</span>
+        <span v-else-if="cloudSyncStatus === 'ok'">☁️ 已同步到云端</span>
+        <span v-else-if="cloudSyncStatus === 'error'" class="text-amber-600 dark:text-amber-400">☁️ 同步失败，数据已存本地</span>
+      </div>
       <div class="flex flex-1 min-h-0 px-6 pb-8 gap-6">
         <!-- 文件夹侧栏 -->
         <aside class="w-52 shrink-0 flex flex-col gap-1">
