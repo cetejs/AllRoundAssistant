@@ -1,12 +1,46 @@
 import { supabase, isCloudEnabled } from './supabase.js'
 
-/** 确保已匿名登录，返回是否可用 */
+/** 确保已登录（无 session 则匿名登录），返回是否可用 */
 export async function ensureCloudAuth() {
   if (!supabase) return false
   const { data: { session } } = await supabase.auth.getSession()
   if (session) return true
   const { error } = await supabase.auth.signInAnonymously()
   return !error
+}
+
+/** 当前用户信息：{ id, email, isAnonymous }，未登录为 null */
+export async function getCurrentUser() {
+  if (!supabase) return null
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  return {
+    id: user.id,
+    email: user.email ?? null,
+    isAnonymous: user.is_anonymous ?? true,
+  }
+}
+
+/** 邮箱+密码登录（多端同账号，可看到同一份云端数据） */
+export async function signInWithEmail(email, password) {
+  if (!supabase) throw new Error('云端未配置')
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw error
+  return data
+}
+
+/** 邮箱+密码注册 */
+export async function signUpWithEmail(email, password) {
+  if (!supabase) throw new Error('云端未配置')
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  if (error) throw error
+  return data
+}
+
+/** 登出（下次进入会再匿名登录，数据仅本机） */
+export async function signOut() {
+  if (!supabase) return
+  await supabase.auth.signOut()
 }
 
 /** 从云端拉取文件夹列表 */
@@ -48,7 +82,7 @@ export async function fetchDocsFromCloud() {
   }))
 }
 
-/** 将文件夹列表同步到云端（全量覆盖当前用户） */
+/** 将文件夹列表同步到云端（全量覆盖：先清空该用户云端文件夹，再写入当前列表，删除会生效） */
 export async function syncFoldersToCloud(folders) {
   if (!supabase) return
   const { data: { user } } = await supabase.auth.getUser()
@@ -59,21 +93,14 @@ export async function syncFoldersToCloud(folders) {
     created_at: f.createdAt,
     user_id: user.id,
   }))
-  if (rows.length === 0) {
-    const { data: existing } = await supabase.from('document_folders').select('id').eq('user_id', user.id)
-    if (existing?.length) {
-      await supabase.from('document_folders').delete().eq('user_id', user.id)
-    }
-    return
+  await supabase.from('document_folders').delete().eq('user_id', user.id)
+  if (rows.length > 0) {
+    const { error } = await supabase.from('document_folders').insert(rows)
+    if (error) throw error
   }
-  const { error } = await supabase.from('document_folders').upsert(rows, {
-    onConflict: 'id',
-    ignoreDuplicates: false,
-  })
-  if (error) throw error
 }
 
-/** 将文档列表同步到云端（全量覆盖当前用户） */
+/** 将文档列表同步到云端（全量覆盖：先清空该用户云端文档，再写入当前列表，删除会生效） */
 export async function syncDocsToCloud(docs) {
   if (!supabase) return
   const { data: { user } } = await supabase.auth.getUser()
@@ -87,18 +114,11 @@ export async function syncDocsToCloud(docs) {
     updated_at: d.updatedAt || d.createdAt,
     user_id: user.id,
   }))
-  if (rows.length === 0) {
-    const { data: existing } = await supabase.from('documents').select('id').eq('user_id', user.id)
-    if (existing?.length) {
-      await supabase.from('documents').delete().eq('user_id', user.id)
-    }
-    return
+  await supabase.from('documents').delete().eq('user_id', user.id)
+  if (rows.length > 0) {
+    const { error } = await supabase.from('documents').insert(rows)
+    if (error) throw error
   }
-  const { error } = await supabase.from('documents').upsert(rows, {
-    onConflict: 'id',
-    ignoreDuplicates: false,
-  })
-  if (error) throw error
 }
 
 export { isCloudEnabled }

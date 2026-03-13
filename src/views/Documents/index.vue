@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import ManifestHeader from '../../components/ManifestHeader.vue'
+import { supabase } from '../../lib/supabase.js'
 import {
   isCloudEnabled,
   ensureCloudAuth,
@@ -8,6 +9,10 @@ import {
   fetchFoldersFromCloud,
   syncDocsToCloud,
   syncFoldersToCloud,
+  getCurrentUser,
+  signInWithEmail,
+  signUpWithEmail,
+  signOut,
 } from '../../lib/cloud.js'
 
 const STORAGE_KEY = 'allround-documents'
@@ -23,10 +28,18 @@ const newFolderName = ref('')
 const showNewFolder = ref(false)
 const menuDocId = ref(null) // 当前显示操作菜单的文档 id
 const moveTargetFolderId = ref(null) // 移动时选中的目标文件夹
-const dateEditDocId = ref(null) // 当前编辑日期的文档 id
-const dateEditValue = ref('') // 日期输入 YYYY-MM-DD
 const cloudSyncStatus = ref(null) // null | 'ok' | 'syncing' | 'error'
 let cloudSyncDocsTimer = null
+// 多端同步：邮箱登录后可在其他设备用同一账号看到同一份数据
+const authUser = ref(null) // { id, email, isAnonymous } | null
+const showAuthModal = ref(false)
+const authMode = ref('login') // 'login' | 'register'
+const authEmail = ref('')
+const authPassword = ref('')
+const authError = ref('')
+const authLoading = ref(false)
+const moveSubmenuOnLeft = ref(false) // 右侧空间不足时子菜单向左展开
+const menuPopupRef = ref(null)
 
 const loadDocs = () => {
   try {
@@ -51,19 +64,27 @@ const loadFolders = () => {
   }
 }
 
-const saveDocs = () => {
+/** @param immediate 为 true 时立即同步云端（用于删除/移动/复制/新建等结构性变更） */
+const saveDocs = (immediate = false) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(docs.value))
   if (isCloudEnabled()) {
     clearTimeout(cloudSyncDocsTimer)
-    cloudSyncDocsTimer = setTimeout(async () => {
+    if (immediate) {
       cloudSyncStatus.value = 'syncing'
-      try {
-        await syncDocsToCloud(docs.value)
-        cloudSyncStatus.value = 'ok'
-      } catch {
-        cloudSyncStatus.value = 'error'
-      }
-    }, 1500)
+      syncDocsToCloud(docs.value)
+        .then(() => { cloudSyncStatus.value = 'ok' })
+        .catch(() => { cloudSyncStatus.value = 'error' })
+    } else {
+      cloudSyncDocsTimer = setTimeout(async () => {
+        cloudSyncStatus.value = 'syncing'
+        try {
+          await syncDocsToCloud(docs.value)
+          cloudSyncStatus.value = 'ok'
+        } catch {
+          cloudSyncStatus.value = 'error'
+        }
+      }, 1500)
+    }
   }
 }
 
@@ -122,7 +143,7 @@ const createDoc = () => {
     updatedAt: new Date().toISOString(),
   }
   docs.value.unshift(doc)
-  saveDocs()
+  saveDocs(true)
   openDoc(doc.id)
 }
 
@@ -145,7 +166,7 @@ const removeFolder = (id, e) => {
   docs.value.forEach((d) => {
     if (d.folderId === id) d.folderId = null
   })
-  saveDocs()
+  saveDocs(true)
   folders.value = folders.value.filter((f) => f.id !== id)
   saveFolders()
   if (selectedFolderId.value === id) selectedFolderId.value = null
@@ -179,13 +200,13 @@ const saveCurrentDoc = () => {
   doc.title = editingTitle.value.trim() || '无标题文档'
   doc.content = editingContent.value
   doc.updatedAt = new Date().toISOString()
-  saveDocs()
+  saveDocs(true)
 }
 
 const removeDoc = (id, e) => {
   e?.stopPropagation()
   docs.value = docs.value.filter((d) => d.id !== id)
-  saveDocs()
+  saveDocs(true)
   if (currentId.value === id) {
     currentId.value = null
     editingTitle.value = ''
@@ -206,7 +227,7 @@ const copyDoc = (d, e) => {
     updatedAt: now,
   }
   docs.value.unshift(copy)
-  saveDocs()
+  saveDocs(true)
   menuDocId.value = null
 }
 
@@ -216,36 +237,15 @@ const moveDoc = (docId, targetFolderId, e) => {
   if (!doc) return
   doc.folderId = targetFolderId === 'uncategorized' || targetFolderId === null ? null : targetFolderId
   doc.updatedAt = new Date().toISOString()
-  saveDocs()
+  saveDocs(true)
   menuDocId.value = null
   moveTargetFolderId.value = null
-}
-
-const openDateEdit = (d, e) => {
-  e?.stopPropagation()
-  menuDocId.value = null
-  dateEditDocId.value = d.id
-  dateEditValue.value = (d.updatedAt || d.createdAt).slice(0, 10)
-}
-
-const confirmDateEdit = () => {
-  if (!dateEditDocId.value || !dateEditValue.value) return
-  const doc = docs.value.find((d) => d.id === dateEditDocId.value)
-  if (!doc) return
-  doc.updatedAt = dateEditValue.value + 'T12:00:00.000Z'
-  saveDocs()
-  dateEditDocId.value = null
-  dateEditValue.value = ''
-}
-
-const cancelDateEdit = () => {
-  dateEditDocId.value = null
-  dateEditValue.value = ''
 }
 
 const toggleDocMenu = (id, e) => {
   e?.stopPropagation()
   menuDocId.value = menuDocId.value === id ? null : id
+  if (menuDocId.value) updateMoveSubmenuPosition()
 }
 
 watch([editingTitle, editingContent], () => {
@@ -259,6 +259,63 @@ watch([editingTitle, editingContent], () => {
 }, { flush: 'post' })
 
 const closeMenu = () => { menuDocId.value = null }
+
+function updateMoveSubmenuPosition() {
+  moveSubmenuOnLeft.value = false
+  if (!menuDocId.value || !menuPopupRef.value) return
+  nextTick(() => {
+    if (!menuPopupRef.value) return
+    const rect = menuPopupRef.value.getBoundingClientRect()
+    const submenuWidth = 120
+    if (rect.right + submenuWidth > window.innerWidth) moveSubmenuOnLeft.value = true
+  })
+}
+
+async function refreshAuthUser() {
+  if (!isCloudEnabled()) return
+  authUser.value = await getCurrentUser()
+}
+
+function openAuthModal(mode) {
+  authMode.value = mode
+  authEmail.value = ''
+  authPassword.value = ''
+  authError.value = ''
+  showAuthModal.value = true
+}
+
+async function submitAuth() {
+  const email = authEmail.value.trim()
+  const password = authPassword.value
+  if (!email || !password) {
+    authError.value = '请填写邮箱和密码'
+    return
+  }
+  authLoading.value = true
+  authError.value = ''
+  try {
+    if (authMode.value === 'register') {
+      await signUpWithEmail(email, password)
+      authError.value = '注册成功，请查收邮件确认（若需）。已登录。'
+    } else {
+      await signInWithEmail(email, password)
+    }
+    showAuthModal.value = false
+    await loadFromCloud()
+    await refreshAuthUser()
+  } catch (e) {
+    authError.value = e?.message || '登录失败'
+  } finally {
+    authLoading.value = false
+  }
+}
+
+async function doSignOut() {
+  await signOut()
+  await ensureCloudAuth()
+  await loadFromCloud()
+  await refreshAuthUser()
+}
 
 async function loadFromCloud() {
   if (!isCloudEnabled()) return
@@ -295,8 +352,11 @@ async function loadFromCloud() {
 onMounted(() => {
   loadDocs()
   loadFolders()
-  loadFromCloud()
+  loadFromCloud().then(() => refreshAuthUser())
   document.addEventListener('click', closeMenu)
+  if (supabase) {
+    supabase.auth.onAuthStateChange(() => refreshAuthUser())
+  }
 })
 
 onUnmounted(() => {
@@ -309,10 +369,51 @@ onUnmounted(() => {
     <!-- 列表页 -->
     <template v-if="currentId === null">
       <ManifestHeader title="文档" />
-      <div v-if="isCloudEnabled()" class="px-6 pt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+      <div v-if="isCloudEnabled()" class="px-6 pt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
         <span v-if="cloudSyncStatus === 'syncing'">☁️ 同步中…</span>
         <span v-else-if="cloudSyncStatus === 'ok'">☁️ 已同步到云端</span>
         <span v-else-if="cloudSyncStatus === 'error'" class="text-amber-600 dark:text-amber-400">☁️ 同步失败，数据已存本地</span>
+        <template v-if="authUser && !authUser.isAnonymous">
+          <span>已登录 {{ authUser.email }}</span>
+          <button type="button" class="text-slate-600 dark:text-slate-300 hover:underline" @click="doSignOut">退出</button>
+        </template>
+        <template v-else>
+          <button type="button" class="text-emerald-600 dark:text-emerald-400 hover:underline" @click="openAuthModal('login')">登录</button>
+          <button type="button" class="text-slate-600 dark:text-slate-300 hover:underline" @click="openAuthModal('register')">注册</button>
+          <span class="text-slate-400">（登录后可在其他设备看到同一份数据）</span>
+        </template>
+      </div>
+      <!-- 登录/注册弹窗 -->
+      <div v-if="showAuthModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="showAuthModal = false">
+        <div class="w-full max-w-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 p-5 shadow-xl">
+          <h3 class="text-lg font-medium text-slate-800 dark:text-slate-100 mb-4">{{ authMode === 'register' ? '注册' : '登录' }}</h3>
+          <form @submit.prevent="submitAuth" class="space-y-3">
+            <input
+              v-model="authEmail"
+              type="email"
+              placeholder="邮箱"
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm"
+              autocomplete="email"
+            />
+            <input
+              v-model="authPassword"
+              type="password"
+              placeholder="密码"
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm"
+              autocomplete="current-password"
+            />
+            <p v-if="authError" class="text-sm text-amber-600 dark:text-amber-400">{{ authError }}</p>
+            <div class="flex gap-2">
+              <button type="button" class="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-500 text-slate-700 dark:text-slate-200 text-sm" @click="showAuthModal = false">取消</button>
+              <button type="submit" class="flex-1 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm disabled:opacity-50" :disabled="authLoading">
+                {{ authLoading ? '…' : (authMode === 'register' ? '注册' : '登录') }}
+              </button>
+            </div>
+            <button type="button" class="w-full text-center text-sm text-slate-500 hover:underline" @click="authMode = authMode === 'login' ? 'register' : 'login'">
+              {{ authMode === 'login' ? '没有账号？去注册' : '已有账号？去登录' }}
+            </button>
+          </form>
+        </div>
       </div>
       <div class="flex flex-1 min-h-0 px-6 pb-8 gap-6">
         <!-- 文件夹侧栏 -->
@@ -404,26 +505,10 @@ onUnmounted(() => {
           <div class="border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 overflow-hidden flex-1 min-h-0">
           <div class="divide-y divide-slate-200 dark:divide-slate-600">
             <template v-for="d in filteredDocs" :key="d.id">
-              <!-- 修改日期行（内联编辑） -->
-              <div
-                v-if="dateEditDocId === d.id"
-                class="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-700/50"
-                @click.stop
-              >
-                <span class="text-slate-500 dark:text-slate-400 text-sm">修改更新日期</span>
-                <input
-                  v-model="dateEditValue"
-                  type="date"
-                  class="px-2 py-1.5 rounded border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm"
-                  @keydown.enter="confirmDateEdit"
-                />
-                <button type="button" class="px-2 py-1 text-sm text-emerald-600 dark:text-emerald-400 hover:underline" @click="confirmDateEdit">确定</button>
-                <button type="button" class="px-2 py-1 text-sm text-slate-500 hover:underline" @click="cancelDateEdit">取消</button>
-              </div>
               <!-- 文档行 -->
               <div
                 class="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group relative"
-                :class="{ 'bg-slate-50 dark:bg-slate-700/50': menuDocId === d.id }"
+                :class="{ 'bg-slate-50 dark:bg-slate-700/50 z-30': menuDocId === d.id }"
               >
                 <button
                   type="button"
@@ -438,7 +523,6 @@ onUnmounted(() => {
                 <span class="text-xs text-slate-400 dark:text-slate-500 shrink-0 relative z-10">{{ formatTime(d.updatedAt || d.createdAt) }}</span>
                 <div class="flex items-center gap-0.5 shrink-0 relative z-10">
                   <button
-                    v-if="dateEditDocId !== d.id"
                     type="button"
                     class="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"
                     title="更多"
@@ -448,6 +532,7 @@ onUnmounted(() => {
                   </button>
                   <div
                     v-if="menuDocId === d.id"
+                    ref="menuPopupRef"
                     class="absolute right-0 top-full mt-1 py-1 min-w-[120px] rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg z-20"
                   >
                     <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700" @click="copyDoc(d, $event)">复制</button>
@@ -456,12 +541,14 @@ onUnmounted(() => {
                         移动到
                         <span>▸</span>
                       </button>
-                      <div class="absolute left-full top-0 ml-0.5 py-1 min-w-[100px] rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
+                      <div
+                        class="absolute top-0 py-1 min-w-[100px] rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg z-30"
+                        :class="moveSubmenuOnLeft ? 'right-full left-auto mr-0.5' : 'left-full ml-0.5'"
+                      >
                         <button type="button" class="w-full px-3 py-1.5 text-left text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700" @click="moveDoc(d.id, null, $event)">未分类</button>
                         <button v-for="f in folders" :key="f.id" type="button" class="w-full px-3 py-1.5 text-left text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700" @click="moveDoc(d.id, f.id, $event)">{{ f.name }}</button>
                       </div>
                     </div>
-                    <button type="button" class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700" @click="openDateEdit(d, $event)">修改更新日期</button>
                     <button type="button" class="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20" @click="removeDoc(d.id, $event)">删除</button>
                   </div>
                 </div>
